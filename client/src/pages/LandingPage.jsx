@@ -9,6 +9,7 @@ import {
   Zap,
   ArrowRight,
   Play,
+  Plane,
 } from "lucide-react";
 
 const LandingPage = () => {
@@ -60,6 +61,221 @@ const LandingPage = () => {
           <div className="absolute top-40 right-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000"></div>
           <div className="absolute bottom-20 left-1/2 w-64 h-64 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-2000"></div>
         </div>
+
+        {/* Flying Drone Animation */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Camera 1 - Large orbit */}
+          <div className="drone-container-1">
+            <div className="drone-path-1">
+              <Camera className="h-12 w-12 text-blue-400 opacity-60 drone-icon" />
+            </div>
+          </div>
+
+          {/* Camera 2 - Medium orbit, opposite direction */}
+          <div className="drone-container-2">
+            <div className="drone-path-2">
+              <Camera className="h-8 w-8 text-cyan-400 opacity-40 drone-icon" />
+            </div>
+          </div>
+
+          {/* Camera 3 - Small orbit, fast */}
+          <div className="drone-container-3">
+            <div className="drone-path-3">
+              <Camera className="h-6 w-6 text-purple-400 opacity-50 drone-icon" />
+            </div>
+          </div>
+
+          {/* Camera 4 - Large elliptical orbit */}
+          <div className="drone-container-4">
+            <div className="drone-path-4">
+              <Camera className="h-10 w-10 text-blue-300 opacity-30 drone-icon" />
+            </div>
+          </div>
+        </div>
+
+        {/* Add drone animation styles */}
+        <style jsx>{`
+          /* Camera 1 - Large circular orbit covering full width */
+          .drone-container-1 {
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            transform: translate(0, 0);
+          }
+
+          .drone-path-1 {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: rotatePath1 20s linear infinite;
+          }
+
+          /* Camera 2 - Medium orbit, upper area */
+          .drone-container-2 {
+            position: absolute;
+            top: 5%;
+            left: 20%;
+            width: 60%;
+            height: 50%;
+            transform: translate(0, 0);
+          }
+
+          .drone-path-2 {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: rotatePath2 15s linear infinite reverse;
+          }
+
+          /* Camera 3 - Small fast orbit, lower right */
+          .drone-container-3 {
+            position: absolute;
+            top: 60%;
+            left: 60%;
+            width: 35%;
+            height: 35%;
+            transform: translate(0, 0);
+          }
+
+          .drone-path-3 {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: rotatePath3 10s linear infinite;
+          }
+
+          /* Camera 4 - Large elliptical orbit spanning full section */
+          .drone-container-4 {
+            position: absolute;
+            top: 15%;
+            left: 5%;
+            width: 90%;
+            height: 70%;
+            transform: translate(0, 0);
+          }
+
+          .drone-path-4 {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: rotatePath4 25s linear infinite;
+          }
+
+          .drone-icon {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: rotateDrone 20s linear infinite,
+              droneFloat 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+          }
+
+          @keyframes rotatePath1 {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @keyframes rotatePath2 {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @keyframes rotatePath3 {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @keyframes rotatePath4 {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @keyframes rotateDrone {
+            from {
+              transform: translateX(-50%) rotate(0deg);
+            }
+            to {
+              transform: translateX(-50%) rotate(-360deg);
+            }
+          }
+
+          @keyframes droneFloat {
+            0%,
+            100% {
+              transform: translateX(-50%) translateY(0) scale(1);
+            }
+            50% {
+              transform: translateX(-50%) translateY(-10px) scale(1.1);
+            }
+          }
+
+          @media (max-width: 768px) {
+            .drone-container-1 {
+              top: 15%;
+              left: 15%;
+              width: 70%;
+              height: 70%;
+            }
+            .drone-container-2 {
+              top: 10%;
+              left: 25%;
+              width: 50%;
+              height: 40%;
+            }
+            .drone-container-3 {
+              top: 65%;
+              left: 65%;
+              width: 30%;
+              height: 30%;
+            }
+            .drone-container-4 {
+              top: 20%;
+              left: 10%;
+              width: 80%;
+              height: 60%;
+            }
+
+            .drone-container-1 .drone-icon {
+              width: 32px;
+              height: 32px;
+            }
+            .drone-container-2 .drone-icon {
+              width: 24px;
+              height: 24px;
+            }
+            .drone-container-3 .drone-icon {
+              width: 20px;
+              height: 20px;
+            }
+            .drone-container-4 .drone-icon {
+              width: 28px;
+              height: 28px;
+            }
+          }
+        `}</style>
 
         <div className="relative z-10">
           <div className="animate-fade-in-up">
