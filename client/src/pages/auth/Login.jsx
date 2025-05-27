@@ -23,11 +23,26 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // TODO: Implement login API call
-      console.log("Login attempt:", formData);
-      // Placeholder for login logic
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        console.log("Login successful:", data);
+        // TODO: Redirect to dashboard based on role
+      } else {
+        setError(data.message || "Login failed");
+      }
     } catch (error) {
-      setError("Login failed. Please try again.");
+      setError("Network error. Please try again.");
       console.error("Login error:", error);
     } finally {
       setLoading(false);
@@ -35,15 +50,17 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
+        <div>
           <div className="flex items-center justify-center space-x-2 mb-6">
             <Camera className="h-8 w-8 text-blue-400" />
             <span className="text-2xl font-bold text-white">SkyVault</span>
           </div>
-          <h2 className="text-3xl font-extrabold text-white">Welcome back</h2>
-          <p className="mt-2 text-sm text-gray-400">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+            Welcome back
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-400">
             Sign in to your account to continue
           </p>
         </div>

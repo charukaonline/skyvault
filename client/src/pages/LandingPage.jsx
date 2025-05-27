@@ -4,25 +4,7 @@ import { Camera, Download, Shield, Star, Users, Zap } from "lucide-react";
 
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      {/* Navigation */}
-      <nav className="container mx-auto px-6 py-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Camera className="h-8 w-8 text-blue-400" />
-            <span className="text-2xl font-bold text-white">SkyVault</span>
-          </div>
-          <div className="flex space-x-4">
-            <Button variant="ghost" className="text-white hover:text-blue-400">
-              <a href="/login">Sign In</a>
-            </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-              <a href="/signup">Get Started</a>
-            </Button>
-          </div>
-        </div>
-      </nav>
-
+    <>
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-20 text-center">
         <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
@@ -204,20 +186,7 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 py-12 border-t border-slate-700">
-        <div className="container mx-auto px-6 text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Camera className="h-6 w-6 text-blue-400" />
-            <span className="text-xl font-bold text-white">SkyVault</span>
-          </div>
-          <p className="text-gray-400">
-            © 2024 SkyVault. All rights reserved. Aerial content marketplace.
-          </p>
-        </div>
-      </footer>
-    </div>
+    </>
   );
 };
 
