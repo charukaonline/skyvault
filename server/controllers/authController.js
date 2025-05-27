@@ -100,20 +100,41 @@ const loginUser = async (req, res) => {
         .json({ message: "Please provide email and password" });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res
+        .status(400)
+        .json({ message: "Please enter a valid email address" });
+    }
+
     // Check if user exists
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // Generate token
     const token = generateToken(user._id);
+
+    // Determine redirect path based on user role
+    const getRedirectPath = (role) => {
+      switch (role) {
+        case "admin":
+          return "/admin/dashboard";
+        case "creator":
+          return "/creator/dashboard";
+        case "buyer":
+        default:
+          return "/buyer/dashboard";
+      }
+    };
 
     res.status(200).json({
       message: "Login successful",
@@ -124,6 +145,7 @@ const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
       },
+      redirectPath: getRedirectPath(user.role),
     });
   } catch (error) {
     console.error("Login error:", error);
