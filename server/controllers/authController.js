@@ -17,10 +17,34 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Please fill all fields" });
     }
 
+    // Validate name
+    if (name.trim().length < 2 || name.trim().length > 50) {
+      return res
+        .status(400)
+        .json({ message: "Name must be between 2 and 50 characters" });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res
+        .status(400)
+        .json({ message: "Please enter a valid email address" });
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters long" });
+    }
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res
+        .status(409)
+        .json({ message: "User already exists with this email" });
     }
 
     // Validate role
@@ -34,8 +58,8 @@ const registerUser = async (req, res) => {
 
     // Create user
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
       password: hashedPassword,
       role,
     });
@@ -55,10 +79,59 @@ const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).json({ message: "Server error" });
+    if (error.code === 11000) {
+      return res
+        .status(409)
+        .json({ message: "User already exists with this email" });
+    }
+    res.status(500).json({ message: "Server error. Please try again later." });
+  }
+};
+
+// Login User
+const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Please provide email and password" });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error. Please try again later." });
   }
 };
 
 module.exports = {
   registerUser,
+  loginUser,
 };
