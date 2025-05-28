@@ -385,7 +385,7 @@ const Signup = () => {
             <span className="text-sm text-gray-400">
               Already have an account?{" "}
               <a
-                href="/login"
+                href="/auth/login"
                 className="font-medium text-blue-400 hover:text-blue-300 transition-colors duration-200"
               >
                 Sign in

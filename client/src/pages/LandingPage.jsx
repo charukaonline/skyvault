@@ -11,6 +11,7 @@ import {
   Play,
   Plane,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const LandingPage = () => {
   const [statsVisible, setStatsVisible] = useState(false);
@@ -19,6 +20,7 @@ const LandingPage = () => {
     creators: 0,
     buyers: 0,
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setTimeout(() => setStatsVisible(true), 1000);
@@ -300,21 +302,19 @@ const LandingPage = () => {
               <Button
                 size="lg"
                 className="group bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-4 text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+                onClick={() => navigate("/")}
               >
-                <a href="/signup" className="flex items-center">
-                  Start Buying Content
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
-                </a>
+                Start Buying Content
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
               </Button>
               <Button
                 variant="outline"
                 size="lg"
                 className="group border-2 border-white/30 text-white hover:bg-white hover:text-slate-900 px-8 py-4 text-lg backdrop-blur-sm transition-all duration-300 transform hover:scale-105"
+                onClick={() => navigate("/auth/signup")}
               >
-                <a href="/signup" className="flex items-center">
-                  <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
-                  Sell Your Footage
-                </a>
+                <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+                Sell Your Footage
               </Button>
             </div>
           </div>
@@ -566,21 +566,19 @@ const LandingPage = () => {
               <Button
                 size="lg"
                 className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+                onClick={() => navigate("/auth/signup")}
               >
-                <a href="/signup" className="flex items-center">
-                  Start Your Journey
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
-                </a>
+                Start Your Journey
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
               </Button>
               <Button
                 variant="outline"
                 size="lg"
                 className="group border-2 border-white/30 text-white hover:bg-white hover:text-slate-900 px-8 py-4 text-lg backdrop-blur-sm transition-all duration-300 transform hover:scale-105"
+                onClick={() => navigate("/auth/login")}
               >
-                <a href="/login" className="flex items-center">
-                  Sign In
-                  <Users className="ml-2 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
-                </a>
+                Sign In
+                <Users className="ml-2 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
               </Button>
             </div>
           </div>
