@@ -10,6 +10,7 @@ import AuthenticatedUser from "./components/AuthenticatedUser";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import BuyerDashboard from "./pages/buyer/BuyerDashboard";
 import CreatorDashboard from "./pages/creator/CreatorDashboard";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Content from "./pages/Content";
 
 function App() {
@@ -62,7 +63,7 @@ function App() {
           <Route
             path="/buyer/:userId/:email"
             element={
-              <ProtectedRoutes allowedRoles={['buyer']}>
+              <ProtectedRoutes allowedRoles={["buyer"]}>
                 <BuyerDashboard />
               </ProtectedRoutes>
             }
@@ -71,8 +72,18 @@ function App() {
           <Route
             path="/creator/:userId/:email"
             element={
-              <ProtectedRoutes allowedRoles={['creator']}>
+              <ProtectedRoutes allowedRoles={["creator"]}>
                 <CreatorDashboard />
+              </ProtectedRoutes>
+            }
+          />
+
+          {/* Admin Routes */}
+          <Route
+            path="/admin/:userId/:email"
+            element={
+              <ProtectedRoutes allowedRoles={["admin"]}>
+                <AdminDashboard />
               </ProtectedRoutes>
             }
           />

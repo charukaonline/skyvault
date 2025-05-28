@@ -114,6 +114,15 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // Check if creator account is approved
+    if (user.role === "creator" && !user.approved) {
+      return res.status(403).json({
+        message:
+          "Your creator account is pending approval. Please wait for admin approval before logging in.",
+        code: "PENDING_APPROVAL",
+      });
+    }
+
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -144,6 +153,7 @@ const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        approved: user.approved,
       },
       redirectPath: getRedirectPath(user.role),
     });
