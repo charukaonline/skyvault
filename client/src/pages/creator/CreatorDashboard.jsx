@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Camera, Upload, DollarSign, Users, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useParams } from 'react-router-dom';
+import CreatorHeader from '@/components/creatorDashboard/CreatorHeader';
+import CreatorSideBar from '@/components/creatorDashboard/CreatorSideBar';
 
 const CreatorDashboard = () => {
     const navigate = useNavigate();
@@ -26,29 +28,25 @@ const CreatorDashboard = () => {
         }
     }, [userId, email, navigate]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/auth/login', { replace: true });
-    };
-
     return (
-        <div className="min-h-screen bg-slate-900">
-            {/* Header */}
-            <header className="bg-slate-800 border-b border-slate-700">
-                <div className="container mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <Button
-                            onClick={handleLogout}
-                            variant="ghost"
-                            className="text-gray-400 hover:text-white"
-                        >
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Logout
-                        </Button>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+            <CreatorHeader />
+            <CreatorSideBar />
+            
+            {/* Main Content Area */}
+            <main className="ml-64 pt-16 p-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-8">
+                        <h1 className="text-2xl font-bold text-gray-200 mb-2">Welcome back, {user?.name || 'Creator'}!</h1>
+                        <p className="text-gray-400">Here's an overview of your drone content performance</p>
+                    </div>
+                    
+                    {/* Dashboard content will go here */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        {/* Quick stats cards will be added here */}
                     </div>
                 </div>
-            </header>
+            </main>
         </div>
     );
 };
