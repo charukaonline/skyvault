@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNotification } from "@/contexts/NotificationContext";
 import { Camera, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const { showSuccess, showError } = useNotification();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -114,11 +116,21 @@ const Login = () => {
           password: "",
         });
 
-        // TODO: Redirect to role-specific dashboard after a short delay
+        // Redirect to role-specific dashboard
         setTimeout(() => {
-          console.log("Redirect to:", data.redirectPath);
-          // window.location.href = data.redirectPath; // Uncomment when routes are ready
-        }, 2000);
+          switch (data.user.role) {
+            case "admin":
+              navigate("/admin/dashboard", { replace: true });
+              break;
+            case "creator":
+              navigate(`/creator/${data.user.id}/${data.user.email}`, { replace: true });
+              break;
+            case "buyer":
+            default:
+              navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
+              break;
+          }
+        }, 1500);
       } else {
         // Handle specific server errors
         if (response.status === 400) {

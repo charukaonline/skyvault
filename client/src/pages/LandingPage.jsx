@@ -302,7 +302,7 @@ const LandingPage = () => {
               <Button
                 size="lg"
                 className="group bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-4 text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/content")}
               >
                 Start Buying Content
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
