@@ -311,7 +311,7 @@ const LandingPage = () => {
                 variant="outline"
                 size="lg"
                 className="group border-2 border-white/30 text-white hover:bg-white hover:text-slate-900 px-8 py-4 text-lg backdrop-blur-sm transition-all duration-300 transform hover:scale-105"
-                onClick={() => navigate("/auth/signup")}
+                onClick={() => navigate("/auth/login")}
               >
                 <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
                 Sell Your Footage

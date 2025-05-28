@@ -5,7 +5,7 @@ import { Camera, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  const { showSuccess, showError } = useNotification();
+  const { showError } = useNotification();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
@@ -105,9 +105,6 @@ const Login = () => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
 
-        const welcomeMessage = getRoleDashboardMessage(data.user.role);
-        showSuccess("Login Successful!", welcomeMessage);
-
         setErrors({});
 
         // Clear form
@@ -116,21 +113,19 @@ const Login = () => {
           password: "",
         });
 
-        // Redirect to role-specific dashboard
-        setTimeout(() => {
-          switch (data.user.role) {
-            case "admin":
-              navigate("/admin/dashboard", { replace: true });
-              break;
-            case "creator":
-              navigate(`/creator/${data.user.id}/${data.user.email}`, { replace: true });
-              break;
-            case "buyer":
-            default:
-              navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
-              break;
-          }
-        }, 1500);
+        // Immediate redirect to role-specific dashboard
+        switch (data.user.role) {
+          case "admin":
+            navigate("/admin/dashboard", { replace: true });
+            break;
+          case "creator":
+            navigate(`/creator/${data.user.id}/${data.user.email}`, { replace: true });
+            break;
+          case "buyer":
+          default:
+            navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
+            break;
+        }
       } else {
         // Handle specific server errors
         if (response.status === 400) {
