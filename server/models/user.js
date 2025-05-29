@@ -5,6 +5,12 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   password: String,
   role: { type: String, enum: ["buyer", "creator", "admin"], default: "buyer" },
+  approved: {
+    type: Boolean,
+    default: function () {
+      return this.role !== "creator"; // Auto-approve buyers and admins, creators need approval
+    },
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

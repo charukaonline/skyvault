@@ -116,14 +116,20 @@ const Login = () => {
         // Immediate redirect to role-specific dashboard
         switch (data.user.role) {
           case "admin":
-            navigate("/admin/dashboard", { replace: true });
+            navigate(`/admin/${data.user.id}/${data.user.email}`, {
+              replace: true,
+            });
             break;
           case "creator":
-            navigate(`/creator/${data.user.id}/${data.user.email}`, { replace: true });
+            navigate(`/creator/${data.user.id}/${data.user.email}`, {
+              replace: true,
+            });
             break;
           case "buyer":
           default:
-            navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
+            navigate(`/buyer/${data.user.id}/${data.user.email}`, {
+              replace: true,
+            });
             break;
         }
       } else {
