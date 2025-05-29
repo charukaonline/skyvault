@@ -114,10 +114,7 @@ const Login = () => {
         });
 
         // Show success notification with role-specific message
-        showSuccess(
-          "Login Successful",
-          getRoleWelcomeMessage(data.user.role)
-        );
+        showSuccess("Login Successful", getRoleWelcomeMessage(data.user.role));
 
         // Immediate redirect to role-specific dashboard
         setTimeout(() => {
@@ -160,7 +157,8 @@ const Login = () => {
           } else {
             showError(
               "Access Denied",
-              data.message || "Your account access has been restricted. Please contact support."
+              data.message ||
+                "Your account access has been restricted. Please contact support."
             );
           }
         } else {

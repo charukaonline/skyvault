@@ -189,18 +189,22 @@ const Signup = () => {
 
           showSuccess(
             "Welcome to SkyVault!",
-            getRoleSpecificMessage(data.user.role) + " " + getRedirectMessage(data.user.role)
+            getRoleSpecificMessage(data.user.role) +
+              " " +
+              getRedirectMessage(data.user.role)
           );
 
           // Redirect to dashboard based on role
           setTimeout(() => {
             switch (data.user.role) {
-              case 'admin':
-                navigate('/admin/dashboard', { replace: true });
+              case "admin":
+                navigate("/admin/dashboard", { replace: true });
                 break;
-              case 'buyer':
+              case "buyer":
               default:
-                navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
+                navigate(`/buyer/${data.user.id}/${data.user.email}`, {
+                  replace: true,
+                });
                 break;
             }
           }, 2000);

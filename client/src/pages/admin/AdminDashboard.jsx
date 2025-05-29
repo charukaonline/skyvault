@@ -75,7 +75,9 @@ const AdminDashboard = () => {
       // Show welcome message for admin
       showInfo(
         "Admin Dashboard",
-        `Welcome back, ${user.name}! You have ${stats.pendingCreators || 0} pending creator approvals.`
+        `Welcome back, ${user.name}! You have ${
+          stats.pendingCreators || 0
+        } pending creator approvals.`
       );
 
       // Simulate API call
