@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
 import NotificationContainer from "../components/ui/NotificationContainer";
 
 const NotificationContext = createContext();
@@ -16,41 +16,56 @@ export const useNotification = () => {
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
-  const addNotification = (notification) => {
-    const id = Date.now() + Math.random();
-    const newNotification = { id, ...notification };
-
-    setNotifications((prev) => [...prev, newNotification]);
-
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-      removeNotification(id);
-    }, 5000);
-
-    return id;
-  };
-
-  const removeNotification = (id) => {
+  const removeNotification = useCallback((id) => {
     setNotifications((prev) =>
       prev.filter((notification) => notification.id !== id)
     );
-  };
+  }, []);
 
-  const showSuccess = (title, message) => {
-    return addNotification({ type: "success", title, message });
-  };
+  const addNotification = useCallback(
+    (notification) => {
+      const id = Date.now() + Math.random();
+      const newNotification = { id, ...notification };
 
-  const showError = (title, message) => {
-    return addNotification({ type: "error", title, message });
-  };
+      setNotifications((prev) => [...prev, newNotification]);
 
-  const showWarning = (title, message) => {
-    return addNotification({ type: "warning", title, message });
-  };
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        removeNotification(id);
+      }, 5000);
 
-  const showInfo = (title, message) => {
-    return addNotification({ type: "info", title, message });
-  };
+      return id;
+    },
+    [removeNotification]
+  );
+
+  const showSuccess = useCallback(
+    (title, message) => {
+      return addNotification({ type: "success", title, message });
+    },
+    [addNotification]
+  );
+
+  const showError = useCallback(
+    (title, message) => {
+      return addNotification({ type: "error", title, message });
+    },
+    [addNotification]
+  );
+
+  const showWarning = useCallback(
+    (title, message) => {
+      return addNotification({ type: "warning", title, message });
+    },
+    [addNotification]
+  );
+
+  const showInfo = useCallback(
+    (title, message) => {
+      return addNotification({ type: "info", title, message });
+    },
+    [addNotification]
+  );
 
   return (
     <NotificationContext.Provider

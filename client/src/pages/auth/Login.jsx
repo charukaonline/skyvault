@@ -116,9 +116,7 @@ const Login = () => {
         // Immediate redirect to role-specific dashboard
         switch (data.user.role) {
           case "admin":
-            navigate(`/admin/${data.user.id}/${data.user.email}`, {
-              replace: true,
-            });
+            navigate("/admin/dashboard", { replace: true });
             break;
           case "creator":
             navigate(`/creator/${data.user.id}/${data.user.email}`, {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "@/contexts/NotificationContext";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -45,27 +45,34 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
 
-  useEffect(() => {
-    // Check if user is admin and logged in
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-    if (!token || user.role !== "admin") {
-      showError(
-        "Access Denied",
-        "You don't have permission to access this page."
-      );
-      navigate("/auth/login");
-      return;
-    }
-
-    setAdminData(user);
-    fetchDashboardData();
-  }, [navigate, showError]);
-
-  const fetchDashboardData = async () => {
+  const checkAuthAndFetchData = useCallback(async () => {
     try {
-      // Simulate API calls - replace with actual endpoints
+      const token = localStorage.getItem("token");
+      const userStr = localStorage.getItem("user");
+
+      if (!token || !userStr) {
+        showError(
+          "Access Denied",
+          "You don't have permission to access this page."
+        );
+        navigate("/auth/login", { replace: true });
+        return;
+      }
+
+      const user = JSON.parse(userStr);
+
+      if (user.role !== "admin") {
+        showError(
+          "Access Denied",
+          "You don't have permission to access this page."
+        );
+        navigate("/auth/login", { replace: true });
+        return;
+      }
+
+      setAdminData(user);
+
+      // Simulate API call
       setTimeout(() => {
         const mockUsers = [
           {
@@ -142,11 +149,15 @@ const AdminDashboard = () => {
         setLoading(false);
       }, 1000);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Error:", error);
       showError("Error", "Failed to load dashboard data");
       setLoading(false);
     }
-  };
+  }, [navigate, showError]);
+
+  useEffect(() => {
+    checkAuthAndFetchData();
+  }, [checkAuthAndFetchData]);
 
   const handleApproveCreator = async (userId) => {
     setActionLoading((prev) => ({ ...prev, [`approve_${userId}`]: true }));

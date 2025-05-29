@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
@@ -8,90 +8,90 @@ const ProtectedRoutes = ({ children, allowedRoles = [] }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem("token");
-      const user = localStorage.getItem("user");
+  const checkAuth = useCallback(() => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
 
-      if (!token || !user) {
-        // No authentication data, redirect to login
-        navigate("/auth/login", { replace: true });
+    if (!token || !user) {
+      // No authentication data, redirect to login
+      navigate("/auth/login", { replace: true });
+      return;
+    }
+
+    try {
+      const userData = JSON.parse(user);
+
+      // For admin routes, no URL parameters needed
+      if (userData.role === "admin" && allowedRoles.includes("admin")) {
+        setIsAuthorized(true);
+        setIsLoading(false);
         return;
       }
 
-      try {
-        const userData = JSON.parse(user);
-
-        // For admin routes, no URL parameters needed
-        if (userData.role === "admin" && allowedRoles.includes("admin")) {
-          setIsAuthorized(true);
-          setIsLoading(false);
-          return;
+      // Validate URL parameters match user data for non-admin routes
+      if (
+        userId &&
+        email &&
+        (userId !== userData.id || email !== userData.email)
+      ) {
+        // URL doesn't match user data, redirect to correct URL
+        switch (userData.role) {
+          case "admin":
+            navigate("/admin/dashboard", { replace: true });
+            break;
+          case "creator":
+            navigate(`/creator/${userData.id}/${userData.email}`, {
+              replace: true,
+            });
+            break;
+          case "buyer":
+          default:
+            navigate(`/buyer/${userData.id}/${userData.email}`, {
+              replace: true,
+            });
+            break;
         }
-
-        // Validate URL parameters match user data for non-admin routes
-        if (
-          userId &&
-          email &&
-          (userId !== userData.id || email !== userData.email)
-        ) {
-          // URL doesn't match user data, redirect to correct URL
-          switch (userData.role) {
-            case "admin":
-              navigate("/admin/dashboard", { replace: true });
-              break;
-            case "creator":
-              navigate(`/creator/${userData.id}/${userData.email}`, {
-                replace: true,
-              });
-              break;
-            case "buyer":
-            default:
-              navigate(`/buyer/${userData.id}/${userData.email}`, {
-                replace: true,
-              });
-              break;
-          }
-          return;
-        }
-
-        // Check if user role is allowed for this route
-        if (allowedRoles.length > 0 && !allowedRoles.includes(userData.role)) {
-          // User role not allowed, redirect to appropriate dashboard
-          switch (userData.role) {
-            case "admin":
-              navigate("/admin/dashboard", { replace: true });
-              break;
-            case "creator":
-              navigate(`/creator/${userData.id}/${userData.email}`, {
-                replace: true,
-              });
-              break;
-            case "buyer":
-            default:
-              navigate(`/buyer/${userData.id}/${userData.email}`, {
-                replace: true,
-              });
-              break;
-          }
-          return;
-        }
-
-        // User is authenticated and authorized
-        setIsAuthorized(true);
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        // Clear invalid data and redirect to login
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        navigate("/auth/login", { replace: true });
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    };
 
-    checkAuth();
+      // Check if user role is allowed for this route
+      if (allowedRoles.length > 0 && !allowedRoles.includes(userData.role)) {
+        // User role not allowed, redirect to appropriate dashboard
+        switch (userData.role) {
+          case "admin":
+            navigate("/admin/dashboard", { replace: true });
+            break;
+          case "creator":
+            navigate(`/creator/${userData.id}/${userData.email}`, {
+              replace: true,
+            });
+            break;
+          case "buyer":
+          default:
+            navigate(`/buyer/${userData.id}/${userData.email}`, {
+              replace: true,
+            });
+            break;
+        }
+        return;
+      }
+
+      // User is authenticated and authorized
+      setIsAuthorized(true);
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      // Clear invalid data and redirect to login
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      navigate("/auth/login", { replace: true });
+    } finally {
+      setIsLoading(false);
+    }
   }, [navigate, allowedRoles, userId, email]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   if (isLoading) {
     return (

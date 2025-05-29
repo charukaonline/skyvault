@@ -7,8 +7,19 @@ const NotificationCard = ({ notification, onClose }) => {
 
   useEffect(() => {
     // Trigger animation on mount
-    setTimeout(() => setIsVisible(true), 10);
-  }, []);
+    const timer = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []); // Empty dependency array - only run once on mount
+
+  useEffect(() => {
+    // Auto-remove after 5 seconds
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      setTimeout(() => onClose(id), 200);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [id, onClose]);
 
   const getIcon = () => {
     switch (type) {

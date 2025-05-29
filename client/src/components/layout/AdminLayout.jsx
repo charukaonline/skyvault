@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useNotification } from "@/contexts/NotificationContext";
 import { Button } from "@/components/ui/button";
@@ -23,65 +23,95 @@ const AdminLayout = ({ children }) => {
   const { showSuccess } = useNotification();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    showSuccess("Logged Out", "You have been successfully logged out.");
-    navigate("/auth/login");
-  };
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
 
-  const menuItems = [
-    {
-      icon: Home,
-      label: "Dashboard",
-      path: "/admin/dashboard",
-      active: location.pathname === "/admin/dashboard",
-    },
-    {
-      icon: Users,
-      label: "Users",
-      path: "/admin/users",
-      active: location.pathname === "/admin/users",
-    },
-    {
-      icon: Camera,
-      label: "Content",
-      path: "/admin/content",
-      active: location.pathname === "/admin/content",
-    },
-    {
-      icon: ShoppingCart,
-      label: "Orders",
-      path: "/admin/orders",
-      active: location.pathname === "/admin/orders",
-    },
-    {
-      icon: DollarSign,
-      label: "Revenue",
-      path: "/admin/revenue",
-      active: location.pathname === "/admin/revenue",
-    },
-    {
-      icon: BarChart3,
-      label: "Analytics",
-      path: "/admin/analytics",
-      active: location.pathname === "/admin/analytics",
-    },
-    {
-      icon: FileText,
-      label: "Reports",
-      path: "/admin/reports",
-      active: location.pathname === "/admin/reports",
-    },
-    {
-      icon: Settings,
-      label: "Settings",
-      path: "/admin/settings",
-      active: location.pathname === "/admin/settings",
-    },
-  ];
+  const handleLogout = useCallback(() => {
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      showSuccess("Logged Out", "You have been successfully logged out.");
+      navigate("/auth/login", { replace: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+      navigate("/auth/login", { replace: true });
+    }
+  }, [navigate, showSuccess]);
 
-  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const menuItems = useMemo(
+    () => [
+      {
+        icon: Home,
+        label: "Dashboard",
+        path: "/admin/dashboard",
+        active: location.pathname === "/admin/dashboard",
+      },
+      {
+        icon: Users,
+        label: "Users",
+        path: "/admin/users",
+        active: location.pathname === "/admin/users",
+      },
+      {
+        icon: Camera,
+        label: "Content",
+        path: "/admin/content",
+        active: location.pathname === "/admin/content",
+      },
+      {
+        icon: ShoppingCart,
+        label: "Orders",
+        path: "/admin/orders",
+        active: location.pathname === "/admin/orders",
+      },
+      {
+        icon: DollarSign,
+        label: "Revenue",
+        path: "/admin/revenue",
+        active: location.pathname === "/admin/revenue",
+      },
+      {
+        icon: BarChart3,
+        label: "Analytics",
+        path: "/admin/analytics",
+        active: location.pathname === "/admin/analytics",
+      },
+      {
+        icon: FileText,
+        label: "Reports",
+        path: "/admin/reports",
+        active: location.pathname === "/admin/reports",
+      },
+      {
+        icon: Settings,
+        label: "Settings",
+        path: "/admin/settings",
+        active: location.pathname === "/admin/settings",
+      },
+    ],
+    [location.pathname]
+  );
+
+  const handleNavigation = useCallback(
+    (path) => {
+      navigate(path);
+      setSidebarOpen(false);
+    },
+    [navigate]
+  );
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => !prev);
+  }, []);
+
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-900 flex">
@@ -101,7 +131,7 @@ const AdminLayout = ({ children }) => {
             variant="ghost"
             size="sm"
             className="lg:hidden text-white hover:bg-slate-700"
-            onClick={() => setSidebarOpen(false)}
+            onClick={closeSidebar}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -112,10 +142,7 @@ const AdminLayout = ({ children }) => {
           {menuItems.map((item) => (
             <button
               key={item.path}
-              onClick={() => {
-                navigate(item.path);
-                setSidebarOpen(false);
-              }}
+              onClick={() => handleNavigation(item.path)}
               className={`w-full flex items-center px-3 py-2 mt-1 text-sm rounded-lg transition-colors ${
                 item.active
                   ? "bg-blue-600 text-white shadow-lg"
@@ -131,8 +158,12 @@ const AdminLayout = ({ children }) => {
         {/* User Info & Logout */}
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-700">
           <div className="mb-3 px-3 py-2">
-            <p className="text-sm font-medium text-white">{currentUser.name}</p>
-            <p className="text-xs text-gray-400">{currentUser.email}</p>
+            <p className="text-sm font-medium text-white">
+              {currentUser.name || "Admin"}
+            </p>
+            <p className="text-xs text-gray-400">
+              {currentUser.email || "admin@skyvault.com"}
+            </p>
           </div>
           <Button
             onClick={handleLogout}
@@ -153,7 +184,7 @@ const AdminLayout = ({ children }) => {
             variant="ghost"
             size="sm"
             className="lg:hidden text-white hover:bg-slate-700"
-            onClick={() => setSidebarOpen(true)}
+            onClick={toggleSidebar}
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -174,7 +205,7 @@ const AdminLayout = ({ children }) => {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
         />
       )}
     </div>
