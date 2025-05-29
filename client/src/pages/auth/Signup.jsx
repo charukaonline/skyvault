@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNotification } from "@/contexts/NotificationContext";
 import { Camera, User, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const { showSuccess, showError } = useNotification();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -150,10 +152,21 @@ const Signup = () => {
           role: "buyer",
         });
 
-        // TODO: Redirect to dashboard based on role after a short delay
+        // Redirect to dashboard based on role
         setTimeout(() => {
-          console.log("Redirect to dashboard:", data.user.role);
-        }, 2000);
+          switch (data.user.role) {
+            case 'admin':
+              navigate('/admin/dashboard', { replace: true });
+              break;
+            case 'creator':
+              navigate(`/creator/${data.user.id}/${data.user.email}`, { replace: true });
+              break;
+            case 'buyer':
+            default:
+              navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
+              break;
+          }
+        }, 1500);
       } else {
         // Handle specific server errors
         if (response.status === 400) {
@@ -385,7 +398,7 @@ const Signup = () => {
             <span className="text-sm text-gray-400">
               Already have an account?{" "}
               <a
-                href="/login"
+                href="/auth/login"
                 className="font-medium text-blue-400 hover:text-blue-300 transition-colors duration-200"
               >
                 Sign in

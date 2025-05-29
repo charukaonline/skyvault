@@ -87,6 +87,11 @@
   .animate-float-delayed {
     animation: float 6s ease-in-out infinite 3s;
   }
+
+  /* Slide in right animation */
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
 }
 
 @keyframes fadeInUp {
@@ -113,5 +118,16 @@
   }
   50% {
     transform: translateY(-20px);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }
