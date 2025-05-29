@@ -5,7 +5,7 @@ import { Camera, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  const { showError } = useNotification();
+  const { showSuccess, showError, showWarning } = useNotification();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
@@ -60,15 +60,15 @@ const Login = () => {
     }
   };
 
-  const getRoleDashboardMessage = (role) => {
+  const getRoleWelcomeMessage = (role) => {
     switch (role) {
       case "admin":
-        return "Welcome back, Admin! Redirecting to admin dashboard...";
+        return "Welcome back, Admin! You have full access to the platform.";
       case "creator":
-        return "Welcome back, Creator! Redirecting to your creator dashboard...";
+        return "Welcome back, Creator! Ready to showcase your amazing drone footage?";
       case "buyer":
       default:
-        return "Welcome back! Redirecting to your dashboard...";
+        return "Welcome back! Discover amazing drone footage from talented creators.";
     }
   };
 
@@ -113,23 +113,31 @@ const Login = () => {
           password: "",
         });
 
+        // Show success notification with role-specific message
+        showSuccess(
+          "Login Successful",
+          getRoleWelcomeMessage(data.user.role)
+        );
+
         // Immediate redirect to role-specific dashboard
-        switch (data.user.role) {
-          case "admin":
-            navigate("/admin/dashboard", { replace: true });
-            break;
-          case "creator":
-            navigate(`/creator/${data.user.id}/${data.user.email}`, {
-              replace: true,
-            });
-            break;
-          case "buyer":
-          default:
-            navigate(`/buyer/${data.user.id}/${data.user.email}`, {
-              replace: true,
-            });
-            break;
-        }
+        setTimeout(() => {
+          switch (data.user.role) {
+            case "admin":
+              navigate("/admin/dashboard", { replace: true });
+              break;
+            case "creator":
+              navigate(`/creator/${data.user.id}/${data.user.email}`, {
+                replace: true,
+              });
+              break;
+            case "buyer":
+            default:
+              navigate(`/buyer/${data.user.id}/${data.user.email}`, {
+                replace: true,
+              });
+              break;
+          }
+        }, 1500);
       } else {
         // Handle specific server errors
         if (response.status === 400) {
@@ -142,6 +150,19 @@ const Login = () => {
             "Login Failed",
             "Invalid email or password. Please check your credentials and try again."
           );
+        } else if (response.status === 403) {
+          // Creator account pending approval
+          if (data.code === "PENDING_APPROVAL") {
+            showWarning(
+              "Account Pending Approval",
+              "Your creator account is awaiting admin approval. You'll receive an email notification once approved. Please contact support if you've been waiting for more than 48 hours."
+            );
+          } else {
+            showError(
+              "Access Denied",
+              data.message || "Your account access has been restricted. Please contact support."
+            );
+          }
         } else {
           showError(
             "Login Failed",

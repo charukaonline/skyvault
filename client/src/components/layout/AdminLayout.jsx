@@ -33,15 +33,19 @@ const AdminLayout = ({ children }) => {
 
   const handleLogout = useCallback(() => {
     try {
+      const userName = currentUser.name || "Admin";
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      showSuccess("Logged Out", "You have been successfully logged out.");
+      showSuccess(
+        "Logged Out Successfully",
+        `Goodbye ${userName}! You have been securely logged out of the admin panel.`
+      );
       navigate("/auth/login", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
       navigate("/auth/login", { replace: true });
     }
-  }, [navigate, showSuccess]);
+  }, [navigate, showSuccess, currentUser.name]);
 
   const menuItems = useMemo(
     () => [

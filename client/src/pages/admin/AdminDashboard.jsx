@@ -30,7 +30,7 @@ import {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError, showInfo } = useNotification();
   const [adminData, setAdminData] = useState(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -52,8 +52,8 @@ const AdminDashboard = () => {
 
       if (!token || !userStr) {
         showError(
-          "Access Denied",
-          "You don't have permission to access this page."
+          "Authentication Required",
+          "Please log in to access the admin dashboard."
         );
         navigate("/auth/login", { replace: true });
         return;
@@ -64,13 +64,19 @@ const AdminDashboard = () => {
       if (user.role !== "admin") {
         showError(
           "Access Denied",
-          "You don't have permission to access this page."
+          "You don't have administrator privileges to access this page."
         );
         navigate("/auth/login", { replace: true });
         return;
       }
 
       setAdminData(user);
+
+      // Show welcome message for admin
+      showInfo(
+        "Admin Dashboard",
+        `Welcome back, ${user.name}! You have ${stats.pendingCreators || 0} pending creator approvals.`
+      );
 
       // Simulate API call
       setTimeout(() => {
@@ -153,7 +159,7 @@ const AdminDashboard = () => {
       showError("Error", "Failed to load dashboard data");
       setLoading(false);
     }
-  }, [navigate, showError]);
+  }, [navigate, showError, showInfo]);
 
   useEffect(() => {
     checkAuthAndFetchData();
@@ -165,6 +171,8 @@ const AdminDashboard = () => {
     try {
       // Simulate API call
       setTimeout(() => {
+        const approvedUser = users.find((user) => user.id === userId);
+
         setUsers((prev) =>
           prev.map((user) =>
             user.id === userId
@@ -179,13 +187,16 @@ const AdminDashboard = () => {
         }));
 
         showSuccess(
-          "Success",
-          "Creator account has been approved successfully!"
+          "Creator Approved",
+          `${approvedUser?.name}'s creator account has been approved! They can now log in and start uploading content.`
         );
         setActionLoading((prev) => ({ ...prev, [`approve_${userId}`]: false }));
       }, 1000);
     } catch (error) {
-      showError("Error", "Failed to approve creator account");
+      showError(
+        "Approval Failed",
+        "Failed to approve creator account. Please try again."
+      );
       setActionLoading((prev) => ({ ...prev, [`approve_${userId}`]: false }));
     }
   };
@@ -196,6 +207,8 @@ const AdminDashboard = () => {
     try {
       // Simulate API call
       setTimeout(() => {
+        const rejectedUser = users.find((user) => user.id === userId);
+
         setUsers((prev) => prev.filter((user) => user.id !== userId));
         setPendingCreators((prev) => prev.filter((user) => user.id !== userId));
         setStats((prev) => ({
@@ -206,13 +219,16 @@ const AdminDashboard = () => {
         }));
 
         showSuccess(
-          "Success",
-          "Creator account has been rejected and removed!"
+          "Creator Rejected",
+          `${rejectedUser?.name}'s creator application has been rejected and their account has been removed from the system.`
         );
         setActionLoading((prev) => ({ ...prev, [`reject_${userId}`]: false }));
       }, 1000);
     } catch (error) {
-      showError("Error", "Failed to reject creator account");
+      showError(
+        "Rejection Failed",
+        "Failed to reject creator account. Please try again."
+      );
       setActionLoading((prev) => ({ ...prev, [`reject_${userId}`]: false }));
     }
   };
@@ -222,17 +238,25 @@ const AdminDashboard = () => {
 
     try {
       setTimeout(() => {
+        const suspendedUser = users.find((user) => user.id === userId);
+
         setUsers((prev) =>
           prev.map((user) =>
             user.id === userId ? { ...user, status: "suspended" } : user
           )
         );
 
-        showSuccess("Success", "User has been suspended!");
+        showSuccess(
+          "User Suspended",
+          `${suspendedUser?.name} has been suspended and can no longer access their account.`
+        );
         setActionLoading((prev) => ({ ...prev, [`suspend_${userId}`]: false }));
       }, 1000);
     } catch (error) {
-      showError("Error", "Failed to suspend user");
+      showError(
+        "Suspension Failed",
+        "Failed to suspend user account. Please try again."
+      );
       setActionLoading((prev) => ({ ...prev, [`suspend_${userId}`]: false }));
     }
   };

@@ -5,7 +5,7 @@ import { Camera, User, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError, showInfo } = useNotification();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
@@ -102,6 +102,32 @@ const Signup = () => {
     setErrors({});
   };
 
+  const getRoleSpecificMessage = (role) => {
+    switch (role) {
+      case "creator":
+        return "Your creator account has been registered! Please note that your account is pending admin approval. You'll receive an email notification once approved and can then access your creator dashboard.";
+      case "buyer":
+        return "Welcome to SkyVault! Your buyer account is ready. You can now browse and purchase amazing drone footage from our talented creators.";
+      case "admin":
+        return "Admin account created successfully! You now have full access to manage the SkyVault platform.";
+      default:
+        return "Your account has been created successfully!";
+    }
+  };
+
+  const getRedirectMessage = (role) => {
+    switch (role) {
+      case "creator":
+        return "Redirecting to login page...";
+      case "buyer":
+        return "Redirecting to your dashboard...";
+      case "admin":
+        return "Redirecting to admin dashboard...";
+      default:
+        return "Redirecting...";
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -133,14 +159,6 @@ const Signup = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store token and user data
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-
-        showSuccess(
-          "Welcome to SkyVault!",
-          "Your account has been created successfully. Redirecting to dashboard..."
-        );
         setErrors({});
 
         // Clear form
@@ -152,21 +170,41 @@ const Signup = () => {
           role: "buyer",
         });
 
-        // Redirect to dashboard based on role
-        setTimeout(() => {
-          switch (data.user.role) {
-            case 'admin':
-              navigate('/admin/dashboard', { replace: true });
-              break;
-            case 'creator':
-              navigate(`/creator/${data.user.id}/${data.user.email}`, { replace: true });
-              break;
-            case 'buyer':
-            default:
-              navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
-              break;
-          }
-        }, 1500);
+        // Handle different user roles
+        if (data.user.role === "creator") {
+          // Creator needs approval - don't store auth data
+          showInfo(
+            "Registration Successful!",
+            getRoleSpecificMessage(data.user.role)
+          );
+
+          // Redirect to login page for creators
+          setTimeout(() => {
+            navigate("/auth/login", { replace: true });
+          }, 3000);
+        } else {
+          // Buyer and Admin can login immediately
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("user", JSON.stringify(data.user));
+
+          showSuccess(
+            "Welcome to SkyVault!",
+            getRoleSpecificMessage(data.user.role) + " " + getRedirectMessage(data.user.role)
+          );
+
+          // Redirect to dashboard based on role
+          setTimeout(() => {
+            switch (data.user.role) {
+              case 'admin':
+                navigate('/admin/dashboard', { replace: true });
+                break;
+              case 'buyer':
+              default:
+                navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
+                break;
+            }
+          }, 2000);
+        }
       } else {
         // Handle specific server errors
         if (response.status === 400) {
