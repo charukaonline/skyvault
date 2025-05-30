@@ -10,7 +10,7 @@ import AuthenticatedUser from "./components/AuthenticatedUser";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import BuyerDashboard from "./pages/buyer/BuyerDashboard";
 import CreatorDashboard from "./pages/creator/CreatorDashboard";
-import AdminDashboard from "./pages/Admin/AdminDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import Content from "./pages/Content";
 
 function App() {
