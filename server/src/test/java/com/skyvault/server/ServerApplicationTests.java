@@ -1,4 +1,4 @@
-package com.skyvault.server.server;
+package com.skyvault.server;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
