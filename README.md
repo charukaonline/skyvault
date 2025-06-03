@@ -67,11 +67,8 @@ SkyVault’s initial release uses a **manual payment system**:
 | Layer        | Technology                         |
 |--------------|-------------------------------------|
 | **Frontend** | Vite + React + Tailwind + ShadCN UI |
-| **Backend**  | Node.js + Express                   |
+| **Backend**  | Java Spring Boot                    |
 | **Database** | MongoDB                             |
-| **Auth**     | JWT-based with Role Management      |
-| **Storage**  | Cloudinary (or S3-compatible) for media |
-| **Hosting**  | Render / Railway / Vercel (planned) |
 
 ---
 
