@@ -1,0 +1,11 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "ServerApplication",
+      "request": "launch",
+      "mainClass": "com.skyvault.server.server.ServerApplication",
+      "projectName": "server"
+    }
+  ]
+}
