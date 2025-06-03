@@ -4,6 +4,13 @@
       "type": "java",
       "name": "ServerApplication",
       "request": "launch",
+      "mainClass": "com.skyvault.server.ServerApplication",
+      "projectName": "server"
+    },
+    {
+      "type": "java",
+      "name": "ServerApplication",
+      "request": "launch",
       "mainClass": "com.skyvault.server.server.ServerApplication",
       "projectName": "server",
       "envFile": "${workspaceFolder}/server/.env"
