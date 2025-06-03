@@ -31,6 +31,6 @@ public class User {
     private LocalDateTime updatedAt;
     
     public enum UserRole {
-        ADMIN, CREATOR, BUYER
+        admin, creator, buyer
     }
 }

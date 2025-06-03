@@ -15,11 +15,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
 public class AuthController {
     private final UserService userService;
     
-    @PostMapping("/register")
+    @PostMapping("/signup")
     public ResponseEntity<?> register(@Valid @RequestBody SignupRequest request) {
         try {
             AuthResponse response = userService.registerUser(request);
