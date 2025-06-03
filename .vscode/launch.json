@@ -5,7 +5,8 @@
       "name": "ServerApplication",
       "request": "launch",
       "mainClass": "com.skyvault.server.server.ServerApplication",
-      "projectName": "server"
+      "projectName": "server",
+      "envFile": "${workspaceFolder}/server/.env"
     }
   ]
 }
