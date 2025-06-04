@@ -26,6 +26,8 @@ public class User {
     
     private UserRole role;
     
+    private Boolean approved; // New field for creator approval
+    
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;

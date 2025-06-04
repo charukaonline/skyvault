@@ -39,9 +39,9 @@ const AdminLayout = ({ children }) => {
     },
     {
       icon: Users,
-      label: "Users",
-      path: "/admin/users",
-      active: location.pathname === "/admin/users",
+      label: "Manage Creators",
+      path: "/admin/creators",
+      active: location.pathname === "/admin/creators",
     },
     {
       icon: Camera,

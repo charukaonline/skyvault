@@ -11,6 +11,7 @@ import ProtectedRoutes from "./components/ProtectedRoutes";
 import BuyerDashboard from "./pages/buyer/BuyerDashboard";
 import CreatorDashboard from "./pages/creator/CreatorDashboard";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
+import ManageCreators from "./pages/admin/ManageCreators";
 import Content from "./pages/Content";
 
 function App() {
@@ -84,6 +85,15 @@ function App() {
             element={
               <ProtectedRoutes allowedRoles={["admin"]}>
                 <AdminDashboard />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route
+            path="/admin/creators"
+            element={
+              <ProtectedRoutes allowedRoles={["admin"]}>
+                <ManageCreators />
               </ProtectedRoutes>
             }
           />

@@ -27,6 +27,14 @@ public class UserService {
         user.setEmail(request.getEmail().toLowerCase().trim());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
+        
+        // Set approval status based on role
+        if (request.getRole() == User.UserRole.creator) {
+            user.setApproved(false); // Creators need approval
+        } else {
+            user.setApproved(true); // Buyers and admins are auto-approved
+        }
+        
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -49,6 +57,11 @@ public class UserService {
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new RuntimeException("Invalid email or password");
+        }
+
+        // Check if creator account is approved
+        if (user.getRole() == User.UserRole.creator && !user.getApproved()) {
+            throw new RuntimeException("Your creator account is pending approval. Please wait for admin approval.");
         }
 
         String token = jwtService.generateToken(user);
@@ -75,5 +88,30 @@ public class UserService {
 
             userRepository.save(user);
         }
+    }
+    
+    public void approveCreator(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getRole() != User.UserRole.creator) {
+            throw new RuntimeException("User is not a creator");
+        }
+        
+        user.setApproved(true);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
+    
+    public void rejectCreator(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getRole() != User.UserRole.creator) {
+            throw new RuntimeException("User is not a creator");
+        }
+        
+        // Delete the user account when rejected
+        userRepository.delete(user);
     }
 }
