@@ -26,9 +26,21 @@ public class User {
     
     private UserRole role;
     
+    // Default to true for backward compatibility
+    private Boolean approved = true;
+    
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;
+    
+    // Helper method to check approval status
+    public Boolean getApproved() {
+        // For backward compatibility - if approved is null, auto-approve non-creators
+        if (approved == null) {
+            return role != UserRole.creator;
+        }
+        return approved;
+    }
     
     public enum UserRole {
         admin, creator, buyer

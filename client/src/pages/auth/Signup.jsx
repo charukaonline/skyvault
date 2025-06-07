@@ -155,15 +155,25 @@ const Signup = () => {
         // Redirect to dashboard based on role
         setTimeout(() => {
           switch (data.user.role) {
-            case 'admin':
-              navigate('/admin/dashboard', { replace: true });
+            case "admin":
+              navigate("/admin/dashboard", { replace: true });
               break;
-            case 'creator':
-              navigate(`/creator/${data.user.id}/${data.user.email}`, { replace: true });
-              break;
-            case 'buyer':
+            case "creator":
+              // Show different message for creators about approval
+              showSuccess(
+                "Creator Account Created!",
+                "Your creator account has been created successfully. Please wait for admin approval before you can access your dashboard. You'll receive an email notification once approved."
+              );
+              // Don't redirect creators, keep them on signup page with info
+              setTimeout(() => {
+                navigate("/auth/login", { replace: true });
+              }, 3000);
+              return; // Don't execute the normal redirect
+            case "buyer":
             default:
-              navigate(`/buyer/${data.user.id}/${data.user.email}`, { replace: true });
+              navigate(`/buyer/${data.user.id}/${data.user.email}`, {
+                replace: true,
+              });
               break;
           }
         }, 1500);

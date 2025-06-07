@@ -2,6 +2,7 @@ package com.skyvault.server.service;
 
 import com.skyvault.server.dto.AuthResponse;
 import com.skyvault.server.dto.SignupRequest;
+import com.skyvault.server.exception.PendingApprovalException;
 import com.skyvault.server.model.User;
 import com.skyvault.server.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,14 @@ public class UserService {
         user.setEmail(request.getEmail().toLowerCase().trim());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
+        
+        // Set approval status based on role
+        if (request.getRole() == User.UserRole.creator) {
+            user.setApproved(false); // Creators need approval
+        } else {
+            user.setApproved(true); // Buyers and admins are auto-approved
+        }
+        
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -51,6 +60,11 @@ public class UserService {
             throw new RuntimeException("Invalid email or password");
         }
 
+        // Check if creator account is approved - use getter method for null safety
+        if (user.getRole() == User.UserRole.creator && !user.getApproved()) {
+            throw new PendingApprovalException("Your creator account is pending approval. Please wait for admin approval.");
+        }
+
         String token = jwtService.generateToken(user);
 
         AuthResponse.UserDto userDto = new AuthResponse.UserDto(
@@ -70,10 +84,37 @@ public class UserService {
             user.setEmail(email.toLowerCase());
             user.setPassword(passwordEncoder.encode(password));
             user.setRole(role);
+            // Set approval based on role
+            user.setApproved(role != User.UserRole.creator);
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
 
             userRepository.save(user);
         }
+    }
+    
+    public void approveCreator(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getRole() != User.UserRole.creator) {
+            throw new RuntimeException("User is not a creator");
+        }
+        
+        user.setApproved(true);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
+    
+    public void rejectCreator(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getRole() != User.UserRole.creator) {
+            throw new RuntimeException("User is not a creator");
+        }
+        
+        // Delete the user account when rejected
+        userRepository.delete(user);
     }
 }
