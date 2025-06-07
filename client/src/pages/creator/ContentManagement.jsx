@@ -99,6 +99,22 @@ const YouTubePreview = ({ youtubeUrl, title }) => {
   );
 };
 
+// Function to get YouTube thumbnail URL
+const getYouTubeThumbnail = (youtubeUrl) => {
+  if (!youtubeUrl) return null;
+
+  const match = youtubeUrl.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/
+  );
+
+  if (match && match[1]) {
+    // Use maxresdefault for highest quality, fallback to hqdefault if not available
+    return `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
+  }
+
+  return null;
+};
+
 const ContentManagement = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
@@ -451,11 +467,30 @@ const ContentManagement = () => {
                   <div className="relative">
                     <img
                       src={
+                        getYouTubeThumbnail(content.youtubePreview) ||
                         content.thumbnailFile?.url ||
                         "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400"
                       }
                       alt={content.title}
                       className="w-full h-48 object-cover rounded-t-lg"
+                      onError={(e) => {
+                        // Fallback to hqdefault if maxresdefault fails
+                        if (
+                          content.youtubePreview &&
+                          e.target.src.includes("maxresdefault")
+                        ) {
+                          const fallbackUrl = e.target.src.replace(
+                            "maxresdefault",
+                            "hqdefault"
+                          );
+                          e.target.src = fallbackUrl;
+                        } else if (!e.target.src.includes("unsplash")) {
+                          // Final fallback to default image
+                          e.target.src =
+                            content.thumbnailFile?.url ||
+                            "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400";
+                        }
+                      }}
                     />
                     <div className="absolute top-3 left-3">
                       {getStatusBadge(content.status)}
