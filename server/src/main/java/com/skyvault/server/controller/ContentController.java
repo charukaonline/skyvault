@@ -1,5 +1,8 @@
 package com.skyvault.server.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.skyvault.server.dto.ContentResponse;
 import com.skyvault.server.dto.ContentSearchRequest;
 import com.skyvault.server.dto.ContentUploadRequest;
@@ -7,6 +10,7 @@ import com.skyvault.server.model.DroneContent;
 import com.skyvault.server.service.ContentService;
 import com.skyvault.server.service.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,10 +21,11 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 @RestController
 @RequestMapping("/api/content")
 @RequiredArgsConstructor
+@Slf4j
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class ContentController {
     
     private final ContentService contentService;
@@ -78,12 +83,31 @@ public class ContentController {
     @PostMapping("/creator/upload")
     public ResponseEntity<?> uploadContent(
             @RequestHeader("Authorization") String token,
-            @RequestPart("data") @Valid ContentUploadRequest request,
+            @RequestPart("data") String requestData,
             @RequestPart("files") List<MultipartFile> files) {
         
         try {
             String jwt = token.replace("Bearer ", "");
             String creatorId = jwtService.extractUserId(jwt);
+            
+            if (creatorId == null || creatorId.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Invalid authentication token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            
+            // Parse JSON data
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            ContentUploadRequest request;
+            
+            try {
+                request = objectMapper.readValue(requestData, ContentUploadRequest.class);
+            } catch (JsonProcessingException e) {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Invalid request data format: " + e.getMessage());
+                return ResponseEntity.badRequest().body(error);
+            }
             
             if (files == null || files.isEmpty()) {
                 Map<String, String> error = new HashMap<>();
@@ -93,15 +117,21 @@ public class ContentController {
             
             // Validate file types and sizes
             for (MultipartFile file : files) {
+                if (file.isEmpty()) {
+                    Map<String, String> error = new HashMap<>();
+                    error.put("message", "Empty files are not allowed");
+                    return ResponseEntity.badRequest().body(error);
+                }
+                
                 if (!isValidFileType(file)) {
                     Map<String, String> error = new HashMap<>();
-                    error.put("message", "Invalid file type. Only MP4, MOV, JPG, PNG files are allowed");
+                    error.put("message", "Invalid file type: " + file.getOriginalFilename() + ". Only MP4, MOV, JPG, PNG files are allowed");
                     return ResponseEntity.badRequest().body(error);
                 }
                 
                 if (file.getSize() > 100 * 1024 * 1024) { // 100MB limit
                     Map<String, String> error = new HashMap<>();
-                    error.put("message", "File size must not exceed 100MB");
+                    error.put("message", "File size must not exceed 100MB: " + file.getOriginalFilename());
                     return ResponseEntity.badRequest().body(error);
                 }
             }
@@ -114,8 +144,9 @@ public class ContentController {
             error.put("message", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         } catch (Exception e) {
+            log.error("Unexpected error during content upload", e);
             Map<String, String> error = new HashMap<>();
-            error.put("message", "Failed to upload content");
+            error.put("message", "Failed to upload content: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

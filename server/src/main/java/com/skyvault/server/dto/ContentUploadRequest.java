@@ -25,8 +25,8 @@ public class ContentUploadRequest {
     @NotBlank(message = "Location is required")
     private String location;
     
-    private String latitude;
-    private String longitude;
+    private Double latitude;
+    private Double longitude;
     
     @NotBlank(message = "Resolution is required")
     @Pattern(regexp = "^(4K|2K|HD|720p)$", message = "Resolution must be 4K, 2K, HD, or 720p")
@@ -34,12 +34,12 @@ public class ContentUploadRequest {
     
     private Integer duration; // in seconds, for videos
     
-    @Pattern(regexp = "^(https?://)?(www\\.)?(youtube\\.com/watch\\?v=|youtu\\.be/)[a-zA-Z0-9_-]+$", 
+    @Pattern(regexp = "^(https?://)?(www\\.)?(youtube\\.com/watch\\?v=|youtu\\.be/)[a-zA-Z0-9_-]+$|^$", 
              message = "Invalid YouTube URL format")
     private String youtubePreview;
     
     @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
     @DecimalMax(value = "10000.0", message = "Price must not exceed $10,000")
     private Double price;
     

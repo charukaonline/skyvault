@@ -43,6 +43,28 @@ public class ContentService {
             throw new RuntimeException("Creator account must be approved before uploading content");
         }
         
+        // Validate files
+        if (files == null || files.isEmpty()) {
+            throw new RuntimeException("At least one media file is required");
+        }
+        
+        // Validate file types and sizes
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                throw new RuntimeException("Empty files are not allowed");
+            }
+            
+            String contentType = file.getContentType();
+            if (contentType == null || 
+                (!contentType.startsWith("image/") && !contentType.startsWith("video/"))) {
+                throw new RuntimeException("Invalid file type: " + file.getOriginalFilename());
+            }
+            
+            if (file.getSize() > 100 * 1024 * 1024) { // 100MB
+                throw new RuntimeException("File size exceeds 100MB limit: " + file.getOriginalFilename());
+            }
+        }
+        
         try {
             DroneContent content = new DroneContent();
             content.setCreatorId(creatorId);
@@ -55,8 +77,8 @@ public class ContentService {
             // Set coordinates if provided
             if (request.getLatitude() != null && request.getLongitude() != null) {
                 DroneContent.Coordinates coordinates = new DroneContent.Coordinates();
-                coordinates.setLat(request.getLatitude());
-                coordinates.setLng(request.getLongitude());
+                coordinates.setLat(request.getLatitude().toString());
+                coordinates.setLng(request.getLongitude().toString());
                 content.setCoordinates(coordinates);
             }
             
@@ -90,6 +112,9 @@ public class ContentService {
             
             return convertToResponse(savedContent, creator);
             
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid license type for creator: {}", creatorId, e);
+            throw new RuntimeException("Invalid license type: " + request.getLicenseType());
         } catch (Exception e) {
             log.error("Error uploading content for creator: {}", creatorId, e);
             throw new RuntimeException("Failed to upload content: " + e.getMessage());

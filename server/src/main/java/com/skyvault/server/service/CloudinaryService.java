@@ -50,6 +50,10 @@ public class CloudinaryService {
     }
     
     public DroneContent.MediaFile uploadSingleFile(MultipartFile file, String folderName) throws IOException {
+        if (file.isEmpty()) {
+            throw new IOException("Cannot upload empty file");
+        }
+        
         String fileType = getFileType(file.getContentType());
         String resourceType = fileType.equals("video") ? "video" : "image";
         
@@ -68,31 +72,38 @@ public class CloudinaryService {
             uploadParams.put("audio_codec", "auto");
         }
         
-        Map<String, Object> uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
-        
-        DroneContent.MediaFile mediaFile = new DroneContent.MediaFile();
-        mediaFile.setId(uploadResult.get("public_id").toString());
-        mediaFile.setUrl(uploadResult.get("secure_url").toString());
-        mediaFile.setType(fileType);
-        mediaFile.setFormat(uploadResult.get("format").toString());
-        mediaFile.setSize(file.getSize());
-        mediaFile.setOriginalName(file.getOriginalFilename());
-        
-        // Set dimensions
-        if (uploadResult.get("width") != null) {
-            mediaFile.setWidth((Integer) uploadResult.get("width"));
+        try {
+            Map<String, Object> uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
+            
+            DroneContent.MediaFile mediaFile = new DroneContent.MediaFile();
+            mediaFile.setId(uploadResult.get("public_id").toString());
+            mediaFile.setUrl(uploadResult.get("secure_url").toString());
+            mediaFile.setType(fileType);
+            mediaFile.setFormat(uploadResult.get("format").toString());
+            mediaFile.setSize(file.getSize());
+            mediaFile.setOriginalName(file.getOriginalFilename());
+            
+            // Set dimensions
+            if (uploadResult.get("width") != null) {
+                mediaFile.setWidth((Integer) uploadResult.get("width"));
+            }
+            if (uploadResult.get("height") != null) {
+                mediaFile.setHeight((Integer) uploadResult.get("height"));
+            }
+            
+            // Set duration for videos
+            if (fileType.equals("video") && uploadResult.get("duration") != null) {
+                Double duration = (Double) uploadResult.get("duration");
+                mediaFile.setDuration(duration.intValue());
+            }
+            
+            log.info("Successfully uploaded file to Cloudinary: {}", mediaFile.getId());
+            return mediaFile;
+            
+        } catch (Exception e) {
+            log.error("Failed to upload file to Cloudinary: {}", file.getOriginalFilename(), e);
+            throw new IOException("Cloudinary upload failed: " + e.getMessage());
         }
-        if (uploadResult.get("height") != null) {
-            mediaFile.setHeight((Integer) uploadResult.get("height"));
-        }
-        
-        // Set duration for videos
-        if (fileType.equals("video") && uploadResult.get("duration") != null) {
-            Double duration = (Double) uploadResult.get("duration");
-            mediaFile.setDuration(duration.intValue());
-        }
-        
-        return mediaFile;
     }
     
     public void deleteFiles(List<DroneContent.MediaFile> mediaFiles) {
