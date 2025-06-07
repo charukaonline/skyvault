@@ -26,6 +26,148 @@ import {
   X,
 } from "lucide-react";
 
+// Original Video Viewer Component
+const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  useEffect(() => {
+    // Find the first video file or use the first file
+    const videoFile =
+      mediaFiles?.find((file) => file.type === "video") || mediaFiles?.[0];
+    setSelectedFile(videoFile);
+  }, [mediaFiles]);
+
+  if (!selectedFile) return null;
+
+  const handleDownload = (file) => {
+    // Create a temporary link element to trigger download
+    const link = document.createElement("a");
+    link.href = file.url;
+    link.download = file.originalName || `${title}_original.${file.format}`;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+      <div className="relative bg-slate-800 rounded-lg overflow-hidden max-w-6xl w-full max-h-[90vh]">
+        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+          <div>
+            <h3 className="text-white font-medium truncate">{title}</h3>
+            <p className="text-gray-400 text-sm">
+              {selectedFile.originalName} •{" "}
+              {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => handleDownload(selectedFile)}
+              className="bg-green-600 hover:bg-green-700"
+              size="sm"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Original
+            </Button>
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {/* File Selection if multiple files */}
+          {mediaFiles && mediaFiles.length > 1 && (
+            <div className="mb-4">
+              <p className="text-gray-300 text-sm mb-2">Select file to view:</p>
+              <div className="flex flex-wrap gap-2">
+                {mediaFiles.map((file, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedFile(file)}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      selectedFile === file
+                        ? "bg-blue-600 text-white border-blue-500"
+                        : "bg-slate-700 text-gray-300 border-slate-600 hover:border-slate-500"
+                    }`}
+                  >
+                    {file.type === "video" ? (
+                      <FileVideo className="h-3 w-3 inline mr-1" />
+                    ) : (
+                      <Image className="h-3 w-3 inline mr-1" />
+                    )}
+                    {file.originalName || `${file.type}_${index + 1}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Media Display */}
+          <div className="bg-black rounded-lg overflow-hidden">
+            {selectedFile.type === "video" ? (
+              <video
+                controls
+                className="w-full max-h-[60vh] object-contain"
+                preload="metadata"
+              >
+                <source
+                  src={selectedFile.url}
+                  type={`video/${selectedFile.format}`}
+                />
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <img
+                src={selectedFile.url}
+                alt={selectedFile.originalName}
+                className="w-full max-h-[60vh] object-contain"
+              />
+            )}
+          </div>
+
+          {/* File Details */}
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-gray-400">Format</p>
+              <p className="text-white">{selectedFile.format?.toUpperCase()}</p>
+            </div>
+            <div>
+              <p className="text-gray-400">Size</p>
+              <p className="text-white">
+                {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB
+              </p>
+            </div>
+            {selectedFile.width && (
+              <div>
+                <p className="text-gray-400">Resolution</p>
+                <p className="text-white">
+                  {selectedFile.width}×{selectedFile.height}
+                </p>
+              </div>
+            )}
+            {selectedFile.duration && (
+              <div>
+                <p className="text-gray-400">Duration</p>
+                <p className="text-white">
+                  {Math.floor(selectedFile.duration / 60)}:
+                  {(selectedFile.duration % 60).toString().padStart(2, "0")}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // YouTube Preview Component
 const YouTubePreview = ({ youtubeUrl, title }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -99,6 +241,22 @@ const YouTubePreview = ({ youtubeUrl, title }) => {
   );
 };
 
+// Function to get YouTube thumbnail URL
+const getYouTubeThumbnail = (youtubeUrl) => {
+  if (!youtubeUrl) return null;
+
+  const match = youtubeUrl.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/
+  );
+
+  if (match && match[1]) {
+    // Use maxresdefault for highest quality, fallback to hqdefault if not available
+    return `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
+  }
+
+  return null;
+};
+
 const ContentManagement = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
@@ -108,6 +266,8 @@ const ContentManagement = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortDir, setSortDir] = useState("desc");
+  const [selectedContentForViewing, setSelectedContentForViewing] =
+    useState(null);
   const [stats, setStats] = useState({
     totalContent: 0,
     totalViews: 0,
@@ -451,16 +611,51 @@ const ContentManagement = () => {
                   <div className="relative">
                     <img
                       src={
+                        getYouTubeThumbnail(content.youtubePreview) ||
                         content.thumbnailFile?.url ||
                         "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400"
                       }
                       alt={content.title}
                       className="w-full h-48 object-cover rounded-t-lg"
+                      onError={(e) => {
+                        // Fallback to hqdefault if maxresdefault fails
+                        if (
+                          content.youtubePreview &&
+                          e.target.src.includes("maxresdefault")
+                        ) {
+                          const fallbackUrl = e.target.src.replace(
+                            "maxresdefault",
+                            "hqdefault"
+                          );
+                          e.target.src = fallbackUrl;
+                        } else if (!e.target.src.includes("unsplash")) {
+                          // Final fallback to default image
+                          e.target.src =
+                            content.thumbnailFile?.url ||
+                            "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400";
+                        }
+                      }}
                     />
-                    <div className="absolute top-3 left-3">
+
+                    {/* View Original Button Overlay */}
+                    {content.mediaFiles && content.mediaFiles.length > 0 && (
+                      <div className="absolute top-3 left-3">
+                        <Button
+                          onClick={() => setSelectedContentForViewing(content)}
+                          className="bg-slate-900/80 hover:bg-slate-800 text-white border border-slate-600 backdrop-blur-sm"
+                          size="sm"
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View Original
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="absolute top-3 right-3 flex gap-2">
                       {getStatusBadge(content.status)}
                     </div>
-                    <div className="absolute top-3 right-3 flex gap-2">
+
+                    <div className="absolute bottom-3 left-3 flex gap-2">
                       {content.mediaFiles?.some(
                         (file) => file.type === "video"
                       ) && (
@@ -559,6 +754,8 @@ const ContentManagement = () => {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0"
+                          onClick={() => setSelectedContentForViewing(content)}
+                          title="View Original Files"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -615,6 +812,15 @@ const ContentManagement = () => {
           )}
         </div>
       </main>
+
+      {/* Original Video Viewer Modal */}
+      {selectedContentForViewing && (
+        <OriginalVideoViewer
+          mediaFiles={selectedContentForViewing.mediaFiles}
+          title={selectedContentForViewing.title}
+          onClose={() => setSelectedContentForViewing(null)}
+        />
+      )}
     </div>
   );
 };
