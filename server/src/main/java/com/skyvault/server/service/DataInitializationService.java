@@ -21,7 +21,7 @@ public class DataInitializationService implements CommandLineRunner {
             "admin@gmail.com",
             "Admin User",
             "admin123",
-            User.UserRole.ADMIN
+            User.UserRole.admin
         );
         
         // Create default creator user
@@ -29,7 +29,7 @@ public class DataInitializationService implements CommandLineRunner {
             "creator@gmail.com",
             "Creator User",
             "creator123",
-            User.UserRole.CREATOR
+            User.UserRole.creator
         );
         
         // Create default buyer user
@@ -37,7 +37,7 @@ public class DataInitializationService implements CommandLineRunner {
             "buyer@gmail.com",
             "Buyer User",
             "buyer123",
-            User.UserRole.BUYER
+            User.UserRole.buyer
         );
         
         log.info("Default users initialization completed.");
