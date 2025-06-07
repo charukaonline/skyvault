@@ -81,7 +81,7 @@ function App() {
 
           {/* Admin Routes */}
           <Route
-            path="/admin/:userId/:email"
+            path="/admin/dashboard"
             element={
               <ProtectedRoutes allowedRoles={["admin"]}>
                 <AdminDashboard />

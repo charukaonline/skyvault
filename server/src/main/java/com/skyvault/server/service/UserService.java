@@ -2,6 +2,7 @@ package com.skyvault.server.service;
 
 import com.skyvault.server.dto.AuthResponse;
 import com.skyvault.server.dto.SignupRequest;
+import com.skyvault.server.exception.PendingApprovalException;
 import com.skyvault.server.model.User;
 import com.skyvault.server.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -59,9 +60,9 @@ public class UserService {
             throw new RuntimeException("Invalid email or password");
         }
 
-        // Check if creator account is approved
+        // Check if creator account is approved - use getter method for null safety
         if (user.getRole() == User.UserRole.creator && !user.getApproved()) {
-            throw new RuntimeException("Your creator account is pending approval. Please wait for admin approval.");
+            throw new PendingApprovalException("Your creator account is pending approval. Please wait for admin approval.");
         }
 
         String token = jwtService.generateToken(user);
@@ -83,6 +84,8 @@ public class UserService {
             user.setEmail(email.toLowerCase());
             user.setPassword(passwordEncoder.encode(password));
             user.setRole(role);
+            // Set approval based on role
+            user.setApproved(role != User.UserRole.creator);
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
 

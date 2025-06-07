@@ -41,83 +41,35 @@ const ManageCreators = () => {
   const fetchCreators = async () => {
     try {
       setLoading(true);
-      // Simulate API call - replace with actual endpoint
-      setTimeout(() => {
-        const mockCreators = [
-          {
-            id: "1",
-            name: "John Doe",
-            email: "john@example.com",
-            role: "creator",
-            approved: true,
-            createdAt: "2024-01-15T10:30:00Z",
-            status: "active",
-            profilePicture: null,
-            portfolio: "Professional drone photographer",
-            equipment: "DJI Mavic 3, DJI Air 2S",
-            experience: "5 years",
-          },
-          {
-            id: "2",
-            name: "Sarah Wilson",
-            email: "sarah.wilson@example.com",
-            role: "creator",
-            approved: false,
-            createdAt: "2024-01-18T14:22:00Z",
-            status: "pending",
-            profilePicture: null,
-            portfolio: "Landscape and nature drone videography",
-            equipment: "DJI Mini 3 Pro",
-            experience: "2 years",
-          },
-          {
-            id: "3",
-            name: "Mike Johnson",
-            email: "mike.j@example.com",
-            role: "creator",
-            approved: false,
-            createdAt: "2024-01-19T09:15:00Z",
-            status: "pending",
-            profilePicture: null,
-            portfolio: "Real estate and commercial drone photography",
-            equipment: "DJI Phantom 4 Pro, DJI Mavic Air",
-            experience: "3 years",
-          },
-          {
-            id: "4",
-            name: "Alex Thompson",
-            email: "alex.thompson@example.com",
-            role: "creator",
-            approved: true,
-            createdAt: "2024-01-10T16:45:00Z",
-            status: "active",
-            profilePicture: null,
-            portfolio: "Event and wedding drone videography",
-            equipment: "DJI Mavic 3 Cine",
-            experience: "4 years",
-          },
-          {
-            id: "5",
-            name: "Emma Davis",
-            email: "emma.davis@example.com",
-            role: "creator",
-            approved: false,
-            createdAt: "2024-01-20T11:30:00Z",
-            status: "pending",
-            profilePicture: null,
-            portfolio: "Sports and action drone footage",
-            equipment: "DJI FPV, DJI Mini 4 Pro",
-            experience: "1 year",
-          },
-        ];
 
-        const approved = mockCreators.filter((creator) => creator.approved);
-        const pending = mockCreators.filter((creator) => !creator.approved);
+      // Fetch all creators and pending creators from API
+      const token = localStorage.getItem("token");
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
 
-        setCreators(mockCreators);
-        setPendingCreators(pending);
-        setLoading(false);
-      }, 1000);
+      const [creatorsResponse, pendingResponse] = await Promise.all([
+        fetch("http://localhost:8080/api/admin/creators", { headers }),
+        fetch("http://localhost:8080/api/admin/creators/pending", { headers }),
+      ]);
+
+      if (!creatorsResponse.ok || !pendingResponse.ok) {
+        throw new Error("Failed to fetch data");
+      }
+
+      const allCreators = await creatorsResponse.json();
+      const pendingCreators = await pendingResponse.json();
+
+      // Add status field based on approval
+      const creatorsWithStatus = allCreators.map((creator) => ({
+        ...creator,
+        status: creator.approved ? "active" : "pending",
+      }));
+
+      setCreators(creatorsWithStatus);
+      setPendingCreators(pendingCreators);
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching creators:", error);
       showError("Error", "Failed to load creator data");
@@ -129,31 +81,43 @@ const ManageCreators = () => {
     setActionLoading((prev) => ({ ...prev, [`approve_${creatorId}`]: true }));
 
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setCreators((prev) =>
-          prev.map((creator) =>
-            creator.id === creatorId
-              ? { ...creator, approved: true, status: "active" }
-              : creator
-          )
-        );
-        setPendingCreators((prev) =>
-          prev.filter((creator) => creator.id !== creatorId)
-        );
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:8080/api/admin/creators/${creatorId}/approve`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-        const approvedCreator = creators.find((c) => c.id === creatorId);
-        showSuccess(
-          "Creator Approved",
-          `${approvedCreator?.name} has been approved and can now access their account.`
-        );
-        setActionLoading((prev) => ({
-          ...prev,
-          [`approve_${creatorId}`]: false,
-        }));
-      }, 1500);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to approve creator");
+      }
+
+      // Update local state
+      setCreators((prev) =>
+        prev.map((creator) =>
+          creator.id === creatorId
+            ? { ...creator, approved: true, status: "active" }
+            : creator
+        )
+      );
+      setPendingCreators((prev) =>
+        prev.filter((creator) => creator.id !== creatorId)
+      );
+
+      const approvedCreator = creators.find((c) => c.id === creatorId);
+      showSuccess(
+        "Creator Approved",
+        `${approvedCreator?.name} has been approved and can now access their account.`
+      );
     } catch (error) {
-      showError("Error", "Failed to approve creator account");
+      showError("Error", error.message || "Failed to approve creator account");
+    } finally {
       setActionLoading((prev) => ({
         ...prev,
         [`approve_${creatorId}`]: false,
@@ -165,29 +129,42 @@ const ManageCreators = () => {
     setActionLoading((prev) => ({ ...prev, [`reject_${creatorId}`]: true }));
 
     try {
-      // Simulate API call
-      setTimeout(() => {
-        const rejectedCreator = creators.find((c) => c.id === creatorId);
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:8080/api/admin/creators/${creatorId}/reject`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-        setCreators((prev) =>
-          prev.filter((creator) => creator.id !== creatorId)
-        );
-        setPendingCreators((prev) =>
-          prev.filter((creator) => creator.id !== creatorId)
-        );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to reject creator");
+      }
 
-        showSuccess(
-          "Creator Rejected",
-          `${rejectedCreator?.name}'s application has been rejected and removed.`
-        );
-        setActionLoading((prev) => ({
-          ...prev,
-          [`reject_${creatorId}`]: false,
-        }));
-      }, 1500);
+      const rejectedCreator = creators.find((c) => c.id === creatorId);
+
+      // Update local state
+      setCreators((prev) => prev.filter((creator) => creator.id !== creatorId));
+      setPendingCreators((prev) =>
+        prev.filter((creator) => creator.id !== creatorId)
+      );
+
+      showSuccess(
+        "Creator Rejected",
+        `${rejectedCreator?.name}'s application has been rejected and removed.`
+      );
     } catch (error) {
-      showError("Error", "Failed to reject creator account");
-      setActionLoading((prev) => ({ ...prev, [`reject_${creatorId}`]: false }));
+      showError("Error", error.message || "Failed to reject creator account");
+    } finally {
+      setActionLoading((prev) => ({
+        ...prev,
+        [`reject_${creatorId}`]: false,
+      }));
     }
   };
 

@@ -3,6 +3,7 @@ package com.skyvault.server.controller;
 import com.skyvault.server.dto.AuthResponse;
 import com.skyvault.server.dto.LoginRequest;
 import com.skyvault.server.dto.SignupRequest;
+import com.skyvault.server.exception.PendingApprovalException;
 import com.skyvault.server.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,11 @@ public class AuthController {
         try {
             AuthResponse response = userService.loginUser(request.getEmail(), request.getPassword());
             return ResponseEntity.ok(response);
+        } catch (PendingApprovalException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            error.put("type", "pending_approval");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("message", e.getMessage());

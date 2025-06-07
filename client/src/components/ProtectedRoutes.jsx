@@ -63,6 +63,14 @@ const ProtectedRoutes = ({ children, allowedRoles = [] }) => {
               navigate("/admin/dashboard", { replace: true });
               break;
             case "creator":
+              // Check if creator is approved before redirecting
+              if (userData.approved === false) {
+                // Creator not approved, redirect to login with message
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                navigate("/auth/login", { replace: true });
+                return;
+              }
               navigate(`/creator/${userData.id}/${userData.email}`, {
                 replace: true,
               });
@@ -74,6 +82,19 @@ const ProtectedRoutes = ({ children, allowedRoles = [] }) => {
               });
               break;
           }
+          return;
+        }
+
+        // Additional check for creators accessing creator routes
+        if (
+          userData.role === "creator" &&
+          allowedRoles.includes("creator") &&
+          userData.approved === false
+        ) {
+          // Creator not approved, clear session and redirect to login
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          navigate("/auth/login", { replace: true });
           return;
         }
 
