@@ -1,5 +1,6 @@
 package com.skyvault.server.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -8,6 +9,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -17,7 +19,10 @@ import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+    
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -27,7 +32,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow requests from any origin during development
         configuration.setAllowedOriginPatterns(Collections.singletonList("http://localhost:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
@@ -47,12 +51,14 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/content/public/**").permitAll() // Public content browsing
-                .requestMatchers("/api/content/creator/**").hasRole("creator") // Creator content management
-                .requestMatchers("/api/content/admin/**").hasRole("admin") // Admin content management
-                .requestMatchers("/api/admin/**").permitAll() // Temporarily allow all admin endpoints
+                .requestMatchers("/api/content/public/**").permitAll()
+                .requestMatchers("/api/test-db").permitAll()
+                .requestMatchers("/api/content/creator/**").hasRole("CREATOR")
+                .requestMatchers("/api/content/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
-            );
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }

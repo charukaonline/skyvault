@@ -25,7 +25,6 @@ import java.util.Map;
 @RequestMapping("/api/content")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class ContentController {
     
     private final ContentService contentService;
@@ -86,15 +85,20 @@ public class ContentController {
             @RequestPart("data") String requestData,
             @RequestPart("files") List<MultipartFile> files) {
         
+        log.info("Received upload request with {} files", files != null ? files.size() : 0);
+        
         try {
             String jwt = token.replace("Bearer ", "");
             String creatorId = jwtService.extractUserId(jwt);
             
             if (creatorId == null || creatorId.trim().isEmpty()) {
+                log.warn("Invalid authentication token received");
                 Map<String, String> error = new HashMap<>();
                 error.put("message", "Invalid authentication token");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
             }
+            
+            log.info("Processing upload for creator: {}", creatorId);
             
             // Parse JSON data
             ObjectMapper objectMapper = new ObjectMapper();
@@ -103,13 +107,16 @@ public class ContentController {
             
             try {
                 request = objectMapper.readValue(requestData, ContentUploadRequest.class);
+                log.info("Parsed upload request: title={}, category={}", request.getTitle(), request.getCategory());
             } catch (JsonProcessingException e) {
+                log.error("Failed to parse request data", e);
                 Map<String, String> error = new HashMap<>();
                 error.put("message", "Invalid request data format: " + e.getMessage());
                 return ResponseEntity.badRequest().body(error);
             }
             
             if (files == null || files.isEmpty()) {
+                log.warn("No files provided in upload request");
                 Map<String, String> error = new HashMap<>();
                 error.put("message", "At least one media file is required");
                 return ResponseEntity.badRequest().body(error);
@@ -118,28 +125,34 @@ public class ContentController {
             // Validate file types and sizes
             for (MultipartFile file : files) {
                 if (file.isEmpty()) {
+                    log.warn("Empty file detected: {}", file.getOriginalFilename());
                     Map<String, String> error = new HashMap<>();
                     error.put("message", "Empty files are not allowed");
                     return ResponseEntity.badRequest().body(error);
                 }
                 
                 if (!isValidFileType(file)) {
+                    log.warn("Invalid file type: {} ({})", file.getOriginalFilename(), file.getContentType());
                     Map<String, String> error = new HashMap<>();
                     error.put("message", "Invalid file type: " + file.getOriginalFilename() + ". Only MP4, MOV, JPG, PNG files are allowed");
                     return ResponseEntity.badRequest().body(error);
                 }
                 
                 if (file.getSize() > 100 * 1024 * 1024) { // 100MB limit
+                    log.warn("File size exceeds limit: {} ({}MB)", file.getOriginalFilename(), file.getSize() / (1024 * 1024));
                     Map<String, String> error = new HashMap<>();
                     error.put("message", "File size must not exceed 100MB: " + file.getOriginalFilename());
                     return ResponseEntity.badRequest().body(error);
                 }
             }
             
+            log.info("All validations passed, proceeding with upload");
             ContentResponse response = contentService.uploadContent(creatorId, request, files);
+            log.info("Upload successful for content: {}", response.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
             
         } catch (RuntimeException e) {
+            log.error("Runtime error during upload", e);
             Map<String, String> error = new HashMap<>();
             error.put("message", e.getMessage());
             return ResponseEntity.badRequest().body(error);

@@ -207,8 +207,11 @@ const UploadContent = () => {
         uploadFormData.append("files", file);
       });
 
-      // Upload with progress tracking
+      // Upload with improved error handling and timeout
       const xhr = new XMLHttpRequest();
+
+      // Set timeout to 10 minutes for large file uploads
+      xhr.timeout = 600000; // 10 minutes
 
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
@@ -218,61 +221,107 @@ const UploadContent = () => {
       });
 
       xhr.onload = () => {
+        console.log("Upload completed with status:", xhr.status);
         if (xhr.status === 201) {
-          const response = JSON.parse(xhr.responseText);
-          showSuccess(
-            "Content Uploaded Successfully!",
-            "Your drone footage has been uploaded and is pending review."
-          );
+          try {
+            const response = JSON.parse(xhr.responseText);
+            showSuccess(
+              "Content Uploaded Successfully!",
+              "Your drone footage has been uploaded and is pending review."
+            );
 
-          // Reset form
-          setFormData({
-            title: "",
-            description: "",
-            category: "",
-            tags: [],
-            location: "",
-            latitude: "",
-            longitude: "",
-            resolution: "4K",
-            duration: "",
-            youtubePreview: "",
-            price: "",
-            licenseType: "ROYALTY_FREE",
-            droneModel: "",
-            shootingDate: "",
-            weatherConditions: "",
-            altitude: "",
-          });
-          setSelectedFiles([]);
-          setTagInput("");
+            // Reset form
+            setFormData({
+              title: "",
+              description: "",
+              category: "",
+              tags: [],
+              location: "",
+              latitude: "",
+              longitude: "",
+              resolution: "4K",
+              duration: "",
+              youtubePreview: "",
+              price: "",
+              licenseType: "ROYALTY_FREE",
+              droneModel: "",
+              shootingDate: "",
+              weatherConditions: "",
+              altitude: "",
+            });
+            setSelectedFiles([]);
+            setTagInput("");
 
-          // Navigate to content management
-          setTimeout(() => {
-            navigate("/creator/content");
-          }, 2000);
+            // Navigate to content management
+            setTimeout(() => {
+              navigate("/creator/content");
+            }, 2000);
+          } catch (parseError) {
+            console.error("Error parsing response:", parseError);
+            showError(
+              "Upload Error",
+              "Upload completed but response was invalid"
+            );
+          }
         } else {
-          const errorResponse = JSON.parse(xhr.responseText);
-          throw new Error(errorResponse.message || "Upload failed");
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            throw new Error(
+              errorResponse.message || `Upload failed with status ${xhr.status}`
+            );
+          } catch (parseError) {
+            throw new Error(
+              `Upload failed with status ${xhr.status}: ${xhr.statusText}`
+            );
+          }
         }
       };
 
       xhr.onerror = () => {
-        throw new Error("Network error occurred");
+        console.error("Network error occurred during upload");
+        showError(
+          "Network Error",
+          "Connection failed. Please check your internet connection and try again."
+        );
       };
 
+      xhr.ontimeout = () => {
+        console.error("Upload timeout occurred");
+        showError(
+          "Upload Timeout",
+          "Upload took too long. Please try with smaller files or check your connection."
+        );
+      };
+
+      xhr.onabort = () => {
+        console.error("Upload was aborted");
+        showError(
+          "Upload Cancelled",
+          "Upload was cancelled. Please try again."
+        );
+      };
+
+      // Test connection first
+      const testResponse = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/test-db`
+      );
+      if (!testResponse.ok) {
+        throw new Error("Server is not responding. Please try again later.");
+      }
+
+      console.log(
+        "Starting upload to:",
+        `${import.meta.env.VITE_API_BASE_URL}/api/content/creator/upload`
+      );
       xhr.open(
         "POST",
-        `${
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
-        }/api/content/creator/upload`
+        `${import.meta.env.VITE_API_BASE_URL}/api/content/creator/upload`
       );
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.send(uploadFormData);
     } catch (error) {
       console.error("Submit error:", error);
       showError("Upload Failed", error.message || "Failed to upload content");
-    } finally {
       setLoading(false);
       setUploadProgress(0);
     }
