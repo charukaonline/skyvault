@@ -13,6 +13,8 @@ import CreatorDashboard from "./pages/creator/CreatorDashboard";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import ManageCreators from "./pages/admin/ManageCreators";
 import Content from "./pages/Content";
+import UploadContent from "./pages/creator/UploadContent";
+import ContentManagement from "./pages/creator/ContentManagement";
 
 function App() {
   return (
@@ -75,6 +77,24 @@ function App() {
             element={
               <ProtectedRoutes allowedRoles={["creator"]}>
                 <CreatorDashboard />
+              </ProtectedRoutes>
+            }
+          />
+
+          {/* Creator Routes */}
+          <Route
+            path="/creator/upload"
+            element={
+              <ProtectedRoutes allowedRoles={["creator"]}>
+                <UploadContent />
+              </ProtectedRoutes>
+            }
+          />
+          <Route
+            path="/creator/content"
+            element={
+              <ProtectedRoutes allowedRoles={["creator"]}>
+                <ContentManagement />
               </ProtectedRoutes>
             }
           />

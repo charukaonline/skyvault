@@ -47,6 +47,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/content/public/**").permitAll() // Public content browsing
+                .requestMatchers("/api/content/creator/**").hasRole("creator") // Creator content management
+                .requestMatchers("/api/content/admin/**").hasRole("admin") // Admin content management
                 .requestMatchers("/api/admin/**").permitAll() // Temporarily allow all admin endpoints
                 .anyRequest().authenticated()
             );
