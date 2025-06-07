@@ -12,7 +12,11 @@ export const apiConfig = {
     content: {
       upload: `${API_BASE_URL}/api/content/creator/upload`,
       creatorContent: `${API_BASE_URL}/api/content/creator/my-content`,
+      creatorContentFiltered: `${API_BASE_URL}/api/content/creator/my-content-filtered`,
+      creatorStats: `${API_BASE_URL}/api/content/creator/stats`,
       search: `${API_BASE_URL}/api/content/public/search`,
+      updateContent: (id) => `${API_BASE_URL}/api/content/creator/${id}`,
+      deleteContent: (id) => `${API_BASE_URL}/api/content/creator/${id}`,
     },
     admin: {
       creators: `${API_BASE_URL}/api/admin/creators`,

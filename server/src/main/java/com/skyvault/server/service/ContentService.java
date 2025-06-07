@@ -239,6 +239,64 @@ public class ContentService {
         return convertToResponse(savedContent, creator);
     }
     
+    public Page<ContentResponse> getCreatorContentWithFilters(
+            String creatorId, 
+            String searchTerm, 
+            String status, 
+            String category,
+            int page, 
+            int size, 
+            String sortBy, 
+            String sortDir) {
+        
+        Sort sort = sortDir.equalsIgnoreCase("desc") ? 
+                   Sort.by(sortBy).descending() : 
+                   Sort.by(sortBy).ascending();
+        
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<DroneContent> contentPage;
+        
+        DroneContent.ContentStatus contentStatus = null;
+        if (status != null && !status.isEmpty() && !status.equals("all")) {
+            try {
+                contentStatus = DroneContent.ContentStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid status filter: {}", status);
+            }
+        }
+        
+        // Apply filters based on provided parameters
+        if (searchTerm != null && !searchTerm.trim().isEmpty() && contentStatus != null) {
+            contentPage = contentRepository.findByCreatorIdAndTitleContainingIgnoreCaseAndStatus(
+                creatorId, searchTerm.trim(), contentStatus, pageable);
+        } else if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            contentPage = contentRepository.findByCreatorIdAndTitleContainingIgnoreCase(
+                creatorId, searchTerm.trim(), pageable);
+        } else if (contentStatus != null) {
+            contentPage = contentRepository.findByCreatorIdAndStatus(creatorId, contentStatus, pageable);
+        } else if (category != null && !category.trim().isEmpty()) {
+            contentPage = contentRepository.findByCreatorIdAndCategory(creatorId, category.trim(), pageable);
+        } else {
+            contentPage = contentRepository.findByCreatorId(creatorId, pageable);
+        }
+        
+        User creator = userRepository.findById(creatorId).orElse(null);
+        
+        return contentPage.map(content -> convertToResponse(content, creator));
+    }
+    
+    public ContentResponse getCreatorContentStats(String creatorId) {
+        // Get aggregated stats for creator's content
+        List<DroneContent> allContent = contentRepository.findByCreatorId(creatorId, Pageable.unpaged()).getContent();
+        
+        ContentResponse stats = new ContentResponse();
+        stats.setViews(allContent.stream().mapToInt(DroneContent::getViews).sum());
+        stats.setDownloads(allContent.stream().mapToInt(DroneContent::getDownloads).sum());
+        stats.setEarnings(allContent.stream().mapToDouble(DroneContent::getEarnings).sum());
+        
+        return stats;
+    }
+    
     private ContentResponse convertToResponse(DroneContent content, User creator) {
         ContentResponse response = new ContentResponse();
         response.setId(content.getId());

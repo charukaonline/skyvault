@@ -61,4 +61,20 @@ public interface ContentRepository extends MongoRepository<DroneContent, String>
     Page<DroneContent> findByStatusOrderByViewsDesc(DroneContent.ContentStatus status, Pageable pageable);
     Page<DroneContent> findByStatusOrderByDownloadsDesc(DroneContent.ContentStatus status, Pageable pageable);
     Page<DroneContent> findByStatusOrderByEarningsDesc(DroneContent.ContentStatus status, Pageable pageable);
+    
+    // Advanced search methods for creator content management
+    @Query("{ 'creatorId': ?0, 'title': { $regex: ?1, $options: 'i' } }")
+    Page<DroneContent> findByCreatorIdAndTitleContainingIgnoreCase(String creatorId, String title, Pageable pageable);
+    
+    @Query("{ 'creatorId': ?0, 'status': ?1 }")
+    Page<DroneContent> findByCreatorIdAndStatus(String creatorId, DroneContent.ContentStatus status, Pageable pageable);
+    
+    @Query("{ 'creatorId': ?0, 'title': { $regex: ?1, $options: 'i' }, 'status': ?2 }")
+    Page<DroneContent> findByCreatorIdAndTitleContainingIgnoreCaseAndStatus(String creatorId, String title, DroneContent.ContentStatus status, Pageable pageable);
+    
+    @Query("{ 'creatorId': ?0, 'category': ?1 }")
+    Page<DroneContent> findByCreatorIdAndCategory(String creatorId, String category, Pageable pageable);
+    
+    @Query("{ 'creatorId': ?0, 'tags': { $in: [?1] } }")
+    Page<DroneContent> findByCreatorIdAndTagsContaining(String creatorId, String tag, Pageable pageable);
 }

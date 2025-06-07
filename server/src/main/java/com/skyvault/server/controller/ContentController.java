@@ -186,6 +186,65 @@ public class ContentController {
         }
     }
     
+    @GetMapping("/creator/my-content-filtered")
+    public ResponseEntity<?> getCreatorContentWithFilters(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        
+        try {
+            String jwt = token.replace("Bearer ", "");
+            String creatorId = jwtService.extractUserId(jwt);
+            
+            if (creatorId == null || creatorId.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Invalid authentication token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            
+            Page<ContentResponse> content = contentService.getCreatorContentWithFilters(
+                creatorId, search, status, category, page, size, sortBy, sortDir);
+            
+            return ResponseEntity.ok(content);
+            
+        } catch (Exception e) {
+            log.error("Error fetching filtered content for creator", e);
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "Failed to retrieve content: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+    
+    @GetMapping("/creator/stats")
+    public ResponseEntity<?> getCreatorStats(
+            @RequestHeader("Authorization") String token) {
+        
+        try {
+            String jwt = token.replace("Bearer ", "");
+            String creatorId = jwtService.extractUserId(jwt);
+            
+            if (creatorId == null || creatorId.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Invalid authentication token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            
+            ContentResponse stats = contentService.getCreatorContentStats(creatorId);
+            return ResponseEntity.ok(stats);
+            
+        } catch (Exception e) {
+            log.error("Error fetching creator stats", e);
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "Failed to retrieve stats");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+    
     @PutMapping("/creator/{contentId}")
     public ResponseEntity<?> updateContent(
             @RequestHeader("Authorization") String token,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Camera,
@@ -19,6 +19,24 @@ const CreatorSideBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeItem, setActiveItem] = useState("dashboard");
+
+  // Update active item based on current location
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes("/upload")) {
+      setActiveItem("upload");
+    } else if (path.includes("/content")) {
+      setActiveItem("content");
+    } else if (path.includes("/orders")) {
+      setActiveItem("orders");
+    } else if (path.includes("/earnings")) {
+      setActiveItem("earnings");
+    } else if (path.includes("/analytics")) {
+      setActiveItem("analytics");
+    } else {
+      setActiveItem("dashboard");
+    }
+  }, [location.pathname]);
 
   const menuItems = [
     {
@@ -81,6 +99,15 @@ const CreatorSideBar = () => {
         break;
       case "content":
         navigate("/creator/content");
+        break;
+      case "orders":
+        navigate("/creator/orders");
+        break;
+      case "earnings":
+        navigate("/creator/earnings");
+        break;
+      case "analytics":
+        navigate("/creator/analytics");
         break;
       default:
         navigate(item.path);
