@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNotification } from "@/contexts/NotificationContext";
 import { Camera, User, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { apiConfig } from "@/config/api";
 
 const Signup = () => {
   const { showSuccess, showError } = useNotification();
@@ -117,7 +118,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8080/api/auth/signup", {
+      const response = await fetch(apiConfig.endpoints.auth.signup, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

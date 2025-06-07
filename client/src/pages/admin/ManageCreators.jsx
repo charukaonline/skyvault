@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Search,
 } from "lucide-react";
+import { apiConfig } from "@/config/api";
 
 const ManageCreators = () => {
   const { showSuccess, showError } = useNotification();
@@ -50,8 +51,8 @@ const ManageCreators = () => {
       };
 
       const [creatorsResponse, pendingResponse] = await Promise.all([
-        fetch("http://localhost:8080/api/admin/creators", { headers }),
-        fetch("http://localhost:8080/api/admin/creators/pending", { headers }),
+        fetch(apiConfig.endpoints.admin.creators, { headers }),
+        fetch(apiConfig.endpoints.admin.creatorsPending, { headers }),
       ]);
 
       if (!creatorsResponse.ok || !pendingResponse.ok) {
@@ -83,7 +84,7 @@ const ManageCreators = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8080/api/admin/creators/${creatorId}/approve`,
+        apiConfig.endpoints.admin.approveCreator(creatorId),
         {
           method: "POST",
           headers: {
@@ -131,7 +132,7 @@ const ManageCreators = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8080/api/admin/creators/${creatorId}/reject`,
+        apiConfig.endpoints.admin.rejectCreator(creatorId),
         {
           method: "DELETE",
           headers: {
