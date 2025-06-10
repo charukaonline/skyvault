@@ -176,7 +176,7 @@ const UploadContent = () => {
         throw new Error("Authentication required");
       }
 
-      // Create FormData for multipart upload
+      // Create FormData for multipart upload to S3
       const uploadFormData = new FormData();
 
       // Add the JSON data
@@ -202,16 +202,16 @@ const UploadContent = () => {
         })
       );
 
-      // Add files
+      // Add files for S3 upload
       selectedFiles.forEach((file) => {
         uploadFormData.append("files", file);
       });
 
-      // Upload with improved error handling and timeout
+      // Upload with improved error handling and timeout for S3
       const xhr = new XMLHttpRequest();
 
-      // Set timeout to 10 minutes for large file uploads
-      xhr.timeout = 600000; // 10 minutes
+      // Set timeout to 15 minutes for large file uploads to S3
+      xhr.timeout = 900000; // 15 minutes
 
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
@@ -221,13 +221,13 @@ const UploadContent = () => {
       });
 
       xhr.onload = () => {
-        console.log("Upload completed with status:", xhr.status);
+        console.log("S3 upload completed with status:", xhr.status);
         if (xhr.status === 201) {
           try {
             const response = JSON.parse(xhr.responseText);
             showSuccess(
               "Content Uploaded Successfully!",
-              "Your drone footage has been uploaded and is pending review."
+              "Your drone footage has been uploaded to private S3 storage for download-only access and is pending review."
             );
 
             // Reset form
@@ -257,51 +257,60 @@ const UploadContent = () => {
               navigate("/creator/content");
             }, 2000);
           } catch (parseError) {
-            console.error("Error parsing response:", parseError);
+            console.error("Error parsing S3 upload response:", parseError);
             showError(
               "Upload Error",
-              "Upload completed but response was invalid"
+              "S3 upload completed but response was invalid"
             );
           }
         } else {
           try {
             const errorResponse = JSON.parse(xhr.responseText);
             throw new Error(
-              errorResponse.message || `Upload failed with status ${xhr.status}`
+              errorResponse.message ||
+                `S3 upload failed with status ${xhr.status}`
             );
           } catch (parseError) {
             throw new Error(
-              `Upload failed with status ${xhr.status}: ${xhr.statusText}`
+              `S3 upload failed with status ${xhr.status}: ${xhr.statusText}`
             );
           }
         }
+        setLoading(false);
+        setUploadProgress(0);
       };
 
       xhr.onerror = () => {
-        console.error("Network error occurred during upload");
+        console.error("Network error occurred during S3 upload");
         showError(
           "Network Error",
-          "Connection failed. Please check your internet connection and try again."
+          "Connection failed during S3 upload. Please check your internet connection and try again."
         );
+        setLoading(false);
+        setUploadProgress(0);
       };
 
       xhr.ontimeout = () => {
-        console.error("Upload timeout occurred");
+        console.error("S3 upload timeout occurred");
         showError(
           "Upload Timeout",
-          "Upload took too long. Please try with smaller files or check your connection."
+          "S3 upload took too long. Please try with smaller files or check your connection."
         );
+        setLoading(false);
+        setUploadProgress(0);
       };
 
       xhr.onabort = () => {
-        console.error("Upload was aborted");
+        console.error("S3 upload was aborted");
         showError(
           "Upload Cancelled",
-          "Upload was cancelled. Please try again."
+          "S3 upload was cancelled. Please try again."
         );
+        setLoading(false);
+        setUploadProgress(0);
       };
 
-      // Test connection first
+      // Test server connection first
       const testResponse = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/test-db`
       );
@@ -310,7 +319,7 @@ const UploadContent = () => {
       }
 
       console.log(
-        "Starting upload to:",
+        "Starting S3 upload to:",
         `${import.meta.env.VITE_API_BASE_URL}/api/content/creator/upload`
       );
       xhr.open(
@@ -320,8 +329,11 @@ const UploadContent = () => {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.send(uploadFormData);
     } catch (error) {
-      console.error("Submit error:", error);
-      showError("Upload Failed", error.message || "Failed to upload content");
+      console.error("S3 upload submit error:", error);
+      showError(
+        "Upload Failed",
+        error.message || "Failed to upload content to S3"
+      );
       setLoading(false);
       setUploadProgress(0);
     }
@@ -469,10 +481,11 @@ const UploadContent = () => {
                   <label htmlFor="media-upload" className="cursor-pointer">
                     <CloudUpload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-lg font-medium text-gray-300 mb-2">
-                      Select Videos & Images
+                      Select Videos & Images for Private S3 Storage
                     </p>
                     <p className="text-sm text-gray-500">
-                      Supports MP4, MOV, JPG, PNG (Max 100MB per file)
+                      Supports MP4, MOV, JPG, PNG (Max 100MB per file) • Stored
+                      privately on AWS S3 for download-only access
                     </p>
                   </label>
                 </div>

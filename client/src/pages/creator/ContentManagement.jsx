@@ -24,51 +24,215 @@ import {
   MoreVertical,
   Play,
   X,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
-// Original Video Viewer Component
-const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
-  const [selectedFile, setSelectedFile] = useState(null);
+// Original File Downloader Component - Download Only (No Streaming)
+const OriginalFileDownloader = ({ mediaFiles, title, contentId, onClose }) => {
+  const [downloadUrls, setDownloadUrls] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [downloadingFiles, setDownloadingFiles] = useState(new Set());
+  const { showSuccess, showError } = useNotification();
 
   useEffect(() => {
-    // Find the first video file or use the first file
-    const videoFile =
-      mediaFiles?.find((file) => file.type === "video") || mediaFiles?.[0];
-    setSelectedFile(videoFile);
-  }, [mediaFiles]);
+    // Fetch batch download URLs for all files (no streaming)
+    fetchDownloadUrls();
+  }, [contentId]);
 
-  if (!selectedFile) return null;
+  const fetchDownloadUrls = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem("token");
 
-  const handleDownload = (file) => {
-    // Create a temporary link element to trigger download
-    const link = document.createElement("a");
-    link.href = file.url;
-    link.download = file.originalName || `${title}_original.${file.format}`;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      console.log(`Fetching download URLs for content: ${contentId}`);
+
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE_URL
+        }/api/content/access/${contentId}/download-all?expirationMinutes=60`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            `Failed to get download URLs (${response.status})`
+        );
+      }
+
+      const data = await response.json();
+      console.log("Received download URLs:", data);
+
+      if (data.downloadUrls && Object.keys(data.downloadUrls).length > 0) {
+        setDownloadUrls(data.downloadUrls);
+      } else {
+        throw new Error("No download URLs received");
+      }
+    } catch (err) {
+      console.error("Error fetching download URLs:", err);
+      setError(`Failed to load download URLs: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleDownload = async (file) => {
+    try {
+      setDownloadingFiles((prev) => new Set([...prev, file.id]));
+
+      const downloadUrl = downloadUrls[file.id];
+      if (!downloadUrl) {
+        throw new Error("Download URL not available");
+      }
+
+      // Create download link
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = file.originalName || `${file.type}_${file.id}`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showSuccess(
+        "Download Started",
+        `${file.originalName || file.id} download initiated`
+      );
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      showError("Download Failed", `Failed to download file: ${error.message}`);
+    } finally {
+      setDownloadingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (!mediaFiles || mediaFiles.length === 0) return;
+
+    try {
+      setDownloadingFiles((prev) => new Set([...prev, "all"]));
+
+      for (const file of mediaFiles) {
+        await handleDownload(file);
+        // Add delay between downloads
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    } catch (error) {
+      console.error("Error downloading all files:", error);
+      showError("Download Failed", "Failed to download all files");
+    } finally {
+      setDownloadingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete("all");
+        return newSet;
+      });
+    }
+  };
+
+  if (!mediaFiles || mediaFiles.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center">
+          <AlertCircle className="h-8 w-8 text-yellow-400 mx-auto mb-4" />
+          <p className="text-white mb-4">No media files found for download</p>
+          <Button onClick={onClose} variant="outline">
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto mb-4" />
+          <p className="text-white">Preparing downloads...</p>
+          <p className="text-gray-400 text-sm mt-2">
+            Generating secure download URLs...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center max-w-md">
+          <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-4" />
+          <p className="text-white mb-4">{error}</p>
+          <div className="space-y-2">
+            <Button
+              onClick={fetchDownloadUrls}
+              variant="outline"
+              className="w-full"
+            >
+              <Loader2 className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            <Button onClick={onClose} variant="ghost" className="w-full">
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="relative bg-slate-800 rounded-lg overflow-hidden max-w-6xl w-full max-h-[90vh]">
+      <div className="relative bg-slate-800 rounded-lg overflow-hidden max-w-4xl w-full max-h-[90vh]">
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <div>
             <h3 className="text-white font-medium truncate">{title}</h3>
             <p className="text-gray-400 text-sm">
-              {selectedFile.originalName} •{" "}
-              {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB
+              {mediaFiles.length} file{mediaFiles.length > 1 ? "s" : ""}{" "}
+              available for download •{" "}
+              {(
+                mediaFiles.reduce((sum, file) => sum + (file.size || 0), 0) /
+                (1024 * 1024)
+              ).toFixed(2)}{" "}
+              MB total • Private S3 Storage
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Button
-              onClick={() => handleDownload(selectedFile)}
-              className="bg-green-600 hover:bg-green-700"
+              onClick={handleDownloadAll}
+              disabled={downloadingFiles.has("all")}
+              className="bg-purple-600 hover:bg-purple-700"
               size="sm"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Download Original
+              {downloadingFiles.has("all") ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Downloading All...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download All ({mediaFiles.length})
+                </>
+              )}
             </Button>
             <Button
               onClick={onClose}
@@ -81,86 +245,97 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
           </div>
         </div>
 
-        <div className="p-4">
-          {/* File Selection if multiple files */}
-          {mediaFiles && mediaFiles.length > 1 && (
-            <div className="mb-4">
-              <p className="text-gray-300 text-sm mb-2">Select file to view:</p>
-              <div className="flex flex-wrap gap-2">
-                {mediaFiles.map((file, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedFile(file)}
-                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                      selectedFile === file
-                        ? "bg-blue-600 text-white border-blue-500"
-                        : "bg-slate-700 text-gray-300 border-slate-600 hover:border-slate-500"
-                    }`}
+        <div className="p-6">
+          {/* File List for Download */}
+          <div className="space-y-4">
+            <h4 className="text-white font-medium mb-4">
+              Original Files (Download Only - No Streaming):
+            </h4>
+            <div className="grid grid-cols-1 gap-3">
+              {mediaFiles.map((file, index) => {
+                const hasDownloadUrl = downloadUrls[file.id];
+                const isDownloading = downloadingFiles.has(file.id);
+                return (
+                  <div
+                    key={file.id || index}
+                    className="bg-slate-700 rounded-lg p-4"
                   >
-                    {file.type === "video" ? (
-                      <FileVideo className="h-3 w-3 inline mr-1" />
-                    ) : (
-                      <Image className="h-3 w-3 inline mr-1" />
-                    )}
-                    {file.originalName || `${file.type}_${index + 1}`}
-                  </button>
-                ))}
-              </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {file.type === "video" ? (
+                          <FileVideo className="h-8 w-8 text-purple-400" />
+                        ) : (
+                          <Image className="h-8 w-8 text-blue-400" />
+                        )}
+                        <div>
+                          <p className="text-white font-medium">
+                            {file.originalName ||
+                              file.id ||
+                              `${file.type}_${index + 1}`}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm text-gray-400">
+                            <span>
+                              {file.format?.toUpperCase() || "Unknown"}
+                            </span>
+                            <span>
+                              {((file.size || 0) / (1024 * 1024)).toFixed(2)} MB
+                            </span>
+                            {file.width && file.height && (
+                              <span>
+                                {file.width}×{file.height}
+                              </span>
+                            )}
+                            {file.duration && (
+                              <span>
+                                {Math.floor(file.duration / 60)}:
+                                {(file.duration % 60)
+                                  .toString()
+                                  .padStart(2, "0")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => handleDownload(file)}
+                        disabled={!hasDownloadUrl || isDownloading}
+                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600"
+                        size="sm"
+                      >
+                        {isDownloading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Downloading...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Original
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-
-          {/* Media Display */}
-          <div className="bg-black rounded-lg overflow-hidden">
-            {selectedFile.type === "video" ? (
-              <video
-                controls
-                className="w-full max-h-[60vh] object-contain"
-                preload="metadata"
-              >
-                <source
-                  src={selectedFile.url}
-                  type={`video/${selectedFile.format}`}
-                />
-                Your browser does not support the video tag.
-              </video>
-            ) : (
-              <img
-                src={selectedFile.url}
-                alt={selectedFile.originalName}
-                className="w-full max-h-[60vh] object-contain"
-              />
-            )}
           </div>
 
-          {/* File Details */}
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-gray-400">Format</p>
-              <p className="text-white">{selectedFile.format?.toUpperCase()}</p>
-            </div>
-            <div>
-              <p className="text-gray-400">Size</p>
-              <p className="text-white">
-                {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB
-              </p>
-            </div>
-            {selectedFile.width && (
+          {/* Security Info */}
+          <div className="mt-6 p-4 bg-slate-700 rounded-lg">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400">Resolution</p>
-                <p className="text-white">
-                  {selectedFile.width}×{selectedFile.height}
+                <p className="text-sm text-gray-300 font-medium mb-1">
+                  🔒 Private AWS S3 Storage - Download Only
+                </p>
+                <p className="text-xs text-gray-400">
+                  Original files are stored securely and available for download
+                  only (no streaming). Download URLs expire in 60 minutes for
+                  security.
                 </p>
               </div>
-            )}
-            {selectedFile.duration && (
-              <div>
-                <p className="text-gray-400">Duration</p>
-                <p className="text-white">
-                  {Math.floor(selectedFile.duration / 60)}:
-                  {(selectedFile.duration % 60).toString().padStart(2, "0")}
-                </p>
-              </div>
-            )}
+              <div className="text-xs text-gray-400">Secure Access</div>
+            </div>
           </div>
         </div>
       </div>
@@ -617,6 +792,7 @@ const ContentManagement = () => {
                       }
                       alt={content.title}
                       className="w-full h-48 object-cover rounded-t-lg"
+                      crossOrigin="anonymous"
                       onError={(e) => {
                         // Fallback to hqdefault if maxresdefault fails
                         if (
@@ -629,7 +805,7 @@ const ContentManagement = () => {
                           );
                           e.target.src = fallbackUrl;
                         } else if (!e.target.src.includes("unsplash")) {
-                          // Final fallback to default image
+                          // Final fallback to S3 thumbnail or default image
                           e.target.src =
                             content.thumbnailFile?.url ||
                             "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400";
@@ -637,16 +813,16 @@ const ContentManagement = () => {
                       }}
                     />
 
-                    {/* View Original Button Overlay */}
+                    {/* Enhanced View Original S3 Files Button Overlay */}
                     {content.mediaFiles && content.mediaFiles.length > 0 && (
                       <div className="absolute top-3 left-3">
                         <Button
                           onClick={() => setSelectedContentForViewing(content)}
-                          className="bg-slate-900/80 hover:bg-slate-800 text-white border border-slate-600 backdrop-blur-sm"
+                          className="bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-600 backdrop-blur-sm shadow-lg"
                           size="sm"
                         >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View Original
+                          <Download className="h-3 w-3 mr-1" />
+                          Download ({content.mediaFiles.length})
                         </Button>
                       </div>
                     )}
@@ -670,6 +846,12 @@ const ContentManagement = () => {
                         <Badge className="bg-blue-500/20 text-blue-400">
                           <Image className="h-3 w-3 mr-1" />
                           Photo
+                        </Badge>
+                      )}
+                      {/* File count badge */}
+                      {content.mediaFiles && content.mediaFiles.length > 1 && (
+                        <Badge className="bg-green-500/20 text-green-400">
+                          {content.mediaFiles.length} Files
                         </Badge>
                       )}
                     </div>
@@ -705,6 +887,28 @@ const ContentManagement = () => {
                       <Calendar className="h-4 w-4 mr-1" />
                       {new Date(content.createdAt).toLocaleDateString()}
                     </div>
+
+                    {/* Enhanced file info */}
+                    {content.mediaFiles && content.mediaFiles.length > 0 && (
+                      <div className="mb-3 p-2 bg-slate-700/50 rounded text-xs text-gray-400">
+                        <div className="flex items-center justify-between">
+                          <span>
+                            {content.mediaFiles.length} original file
+                            {content.mediaFiles.length > 1 ? "s" : ""} in S3
+                          </span>
+                          <span>
+                            {(
+                              content.mediaFiles.reduce(
+                                (sum, file) => sum + (file.size || 0),
+                                0
+                              ) /
+                              (1024 * 1024)
+                            ).toFixed(1)}{" "}
+                            MB total
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-1 mb-3">
                       {content.tags?.slice(0, 3).map((tag) => (
@@ -753,11 +957,14 @@ const ContentManagement = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 w-8 p-0"
+                          className="h-8 px-2"
                           onClick={() => setSelectedContentForViewing(content)}
-                          title="View Original Files"
+                          title={`View ${
+                            content.mediaFiles?.length || 0
+                          } Original Files`}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4 mr-1" />
+                          <span className="text-xs">Originals</span>
                         </Button>
                         <Button
                           size="sm"
@@ -813,11 +1020,12 @@ const ContentManagement = () => {
         </div>
       </main>
 
-      {/* Original Video Viewer Modal */}
+      {/* Original File Downloader Modal */}
       {selectedContentForViewing && (
-        <OriginalVideoViewer
+        <OriginalFileDownloader
           mediaFiles={selectedContentForViewing.mediaFiles}
           title={selectedContentForViewing.title}
+          contentId={selectedContentForViewing.id}
           onClose={() => setSelectedContentForViewing(null)}
         />
       )}

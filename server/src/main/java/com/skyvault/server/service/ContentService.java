@@ -28,7 +28,7 @@ public class ContentService {
     
     private final ContentRepository contentRepository;
     private final UserRepository userRepository;
-    private final CloudinaryService cloudinaryService;
+    private final S3Service s3Service; // Changed from CloudinaryService
     
     public ContentResponse uploadContent(String creatorId, ContentUploadRequest request, List<MultipartFile> files) {
         // Validate creator exists and is approved
@@ -98,17 +98,18 @@ public class ContentService {
             content.setCreatedAt(LocalDateTime.now());
             content.setUpdatedAt(LocalDateTime.now());
             
-            // Upload files to Cloudinary
-            List<DroneContent.MediaFile> mediaFiles = cloudinaryService.uploadMultipleFiles(files, "content");
+            // Upload files to S3 for secure download-only access (no streaming)
+            List<DroneContent.MediaFile> mediaFiles = s3Service.uploadMultipleFiles(files, "skyvault/content");
             content.setMediaFiles(mediaFiles);
             
-            // Set thumbnail (first image or video thumbnail)
+            // Set thumbnail reference (first image for preview generation)
             if (!mediaFiles.isEmpty()) {
                 content.setThumbnailFile(mediaFiles.get(0));
             }
             
             DroneContent savedContent = contentRepository.save(content);
-            log.info("Content uploaded successfully: {} by creator: {}", savedContent.getId(), creatorId);
+            log.info("Content uploaded successfully with {} files for download-only access: {} by creator: {}", 
+                    mediaFiles.size(), savedContent.getId(), creatorId);
             
             return convertToResponse(savedContent, creator);
             
@@ -193,11 +194,11 @@ public class ContentService {
             throw new RuntimeException("You can only delete your own content");
         }
         
-        // Delete files from Cloudinary
+        // Delete files from S3 instead of Cloudinary
         try {
-            cloudinaryService.deleteFiles(content.getMediaFiles());
+            s3Service.deleteFiles(content.getMediaFiles());
         } catch (Exception e) {
-            log.warn("Failed to delete files from Cloudinary for content: {}", contentId, e);
+            log.warn("Failed to delete files from S3 for content: {}", contentId, e);
         }
         
         contentRepository.delete(content);

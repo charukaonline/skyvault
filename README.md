@@ -24,7 +24,7 @@ SkyVault bridges the gap between drone content creators and businesses looking f
 
 ### ✈️ For Creators
 
-- **Upload Dashboard**: Comprehensive upload system with Cloudinary integration
+- **Upload Dashboard**: Comprehensive upload system with AWS S3 integration
 - Upload high-resolution drone videos/photos (up to 4K) with drag-and-drop interface
 - Add YouTube preview links for better content showcase
 - Assign license types (e.g., royalty-free, limited use, exclusive)
@@ -58,21 +58,41 @@ SkyVault bridges the gap between drone content creators and businesses looking f
 
 ### Upload Features
 
-- **Cloudinary Integration**: Secure cloud storage for all media files
-- **Multi-file Upload**: Support for videos (MP4, MOV) and images (JPG, PNG)
-- **YouTube Integration**: Add preview links for enhanced content showcase
+- **Private AWS S3 Integration**: Secure cloud storage for all media files with download-only access
+- **Multi-file Upload**: Support for videos (MP4, MOV) and images (JPG, PNG) with direct private S3 upload
+- **YouTube Integration**: Add preview links for enhanced content showcase (public previews)
 - **Metadata Management**: Comprehensive tagging, categorization, and location data
 - **License Configuration**: Flexible licensing options with custom pricing
 - **Technical Details**: Resolution, duration, drone model, and shooting conditions
-- **Progress Tracking**: Real-time upload progress with file management
+- **Progress Tracking**: Real-time upload progress with secure S3 file management
 - **Content Status**: Approval workflow with pending/approved/rejected states
+- **Download-Only Access Control**: Secure presigned URLs for authorized downloads only (no streaming)
 
 ### Supported Formats
 
-- **Videos**: MP4, MOV (up to 100MB per file)
-- **Images**: JPG, PNG (up to 100MB per file)
-- **Resolutions**: 4K, 2K, HD, 720p
-- **Previews**: YouTube video links for enhanced showcasing
+- **Videos**: MP4, MOV (up to 100MB per file) stored privately on AWS S3 for download only
+- **Images**: JPG, PNG (up to 100MB per file) stored privately on AWS S3 for download only
+- **Resolutions**: 4K, 2K, HD, 720p with secure S3 metadata storage
+- **Previews**: YouTube video links for public showcasing + limited S3 presigned URLs for authorized preview only
+
+### AWS S3 Private Storage Benefits
+
+- **Enhanced Security**: All files stored privately with no public access or streaming
+- **Download-Only URLs**: Time-limited download URLs for authorized users only
+- **Access Control**: Role-based access (creators download own content, buyers download purchased content)
+- **Scalable**: Unlimited storage capacity with enterprise-grade security
+- **Cost-Effective**: Pay only for storage and download requests used
+- **Reliable**: 99.999999999% (11 9's) durability
+- **Secure Downloads**: Time-limited download URLs for purchased content (no streaming)
+
+### Security Architecture
+
+- **Private by Default**: All uploaded content is stored privately on S3 with no streaming access
+- **Download-Only URLs**: Time-limited download URLs generated for authorized users (30min-1hr expiration)
+- **Role-Based Security**: Creators download own content, buyers download purchased content, admins download all
+- **Purchase Verification**: Download access control integrated with purchase tracking system
+- **Audit Trail**: All download attempts logged for security monitoring
+- **No Streaming**: Original files are download-only, preventing unauthorized streaming or copying
 
 ---
 
@@ -95,7 +115,7 @@ SkyVault's initial release uses a **manual payment system**:
 | **Frontend** | Vite + React + Tailwind + ShadCN UI |
 | **Backend**  | Java Spring Boot                    |
 | **Database** | MongoDB                             |
-| **Storage**  | Cloudinary (Images & Videos)        |
+| **Storage**  | AWS S3 (Images & Videos)            |
 | **Preview**  | YouTube Integration                 |
 
 ---
@@ -116,18 +136,34 @@ Implemented on both **frontend routing** and **backend API**:
 
 1. Navigate to the client directory
 2. Install dependencies: `npm install`
-3. Create `.env` file with Cloudinary credentials:
+3. Start development server: `npm run dev`
+
+### Backend Setup
+
+1. Set up AWS S3 bucket and configure IAM user with S3 permissions
+2. Create `.env` file with AWS credentials:
    ```
-   VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
-   VITE_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_REGION=us-east-1
+   AWS_S3_BUCKET_NAME=your_bucket_name
    ```
-4. Start development server: `npm run dev`
+3. Configure CORS policy on S3 bucket for frontend access
 
-### Cloudinary Configuration
+### AWS S3 Configuration
 
-1. Create a Cloudinary account
-2. Create an upload preset for unsigned uploads
-3. Configure folder structure: `skyvault/content`
-4. Set up auto-moderation and optimization rules
+1. Create an S3 bucket with public read access for content delivery
+2. Set up IAM user with S3 permissions (PutObject, GetObject, DeleteObject)
+3. Configure bucket CORS policy for web access
+4. Set up folder structure: `skyvault/content`
+5. Enable versioning and lifecycle policies as needed
+6. Configure CloudFront CDN for optimal performance (optional)
 
----
+### Environment Variables
+
+```
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET_NAME=your_bucket_name
+```
