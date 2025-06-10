@@ -21,10 +21,12 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 @RestController
 @RequestMapping("/api/content")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"}, allowCredentials = "true")
 public class ContentController {
     
     private final ContentService contentService;
@@ -85,14 +87,17 @@ public class ContentController {
             @RequestPart("data") String requestData,
             @RequestPart("files") List<MultipartFile> files) {
         
-        log.info("Received upload request with {} files", files != null ? files.size() : 0);
+        log.info("Received upload request with {} files from origin: {}", 
+            files != null ? files.size() : 0, 
+            org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()
+                .getAttribute("org.springframework.web.servlet.HandlerMapping.bestMatchingHandler", 0));
         
         try {
             String jwt = token.replace("Bearer ", "");
             String creatorId = jwtService.extractUserId(jwt);
             
             if (creatorId == null || creatorId.trim().isEmpty()) {
-                log.warn("Invalid authentication token received");
+                log.warn("Invalid authentication token received for upload");
                 Map<String, String> error = new HashMap<>();
                 error.put("message", "Invalid authentication token");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
