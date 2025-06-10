@@ -40,11 +40,16 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
   if (!selectedFile) return null;
 
   const handleDownload = (file) => {
-    // Create a temporary link element to trigger download
+    // For S3 files, we can directly use the public URL
     const link = document.createElement("a");
     link.href = file.url;
     link.download = file.originalName || `${title}_original.${file.format}`;
     link.target = "_blank";
+    link.rel = "noopener noreferrer";
+
+    // Add CORS headers for S3 download
+    link.crossOrigin = "anonymous";
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -58,7 +63,8 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
             <h3 className="text-white font-medium truncate">{title}</h3>
             <p className="text-gray-400 text-sm">
               {selectedFile.originalName} •{" "}
-              {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB
+              {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB •
+              Stored on AWS S3
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -68,7 +74,7 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
               size="sm"
             >
               <Download className="h-4 w-4 mr-2" />
-              Download Original
+              Download from S3
             </Button>
             <Button
               onClick={onClose}
@@ -85,7 +91,9 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
           {/* File Selection if multiple files */}
           {mediaFiles && mediaFiles.length > 1 && (
             <div className="mb-4">
-              <p className="text-gray-300 text-sm mb-2">Select file to view:</p>
+              <p className="text-gray-300 text-sm mb-2">
+                Select S3 file to view:
+              </p>
               <div className="flex flex-wrap gap-2">
                 {mediaFiles.map((file, index) => (
                   <button
@@ -109,13 +117,14 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
             </div>
           )}
 
-          {/* Media Display */}
+          {/* Media Display - S3 URLs */}
           <div className="bg-black rounded-lg overflow-hidden">
             {selectedFile.type === "video" ? (
               <video
                 controls
                 className="w-full max-h-[60vh] object-contain"
                 preload="metadata"
+                crossOrigin="anonymous"
               >
                 <source
                   src={selectedFile.url}
@@ -128,6 +137,7 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
                 src={selectedFile.url}
                 alt={selectedFile.originalName}
                 className="w-full max-h-[60vh] object-contain"
+                crossOrigin="anonymous"
               />
             )}
           </div>
@@ -161,6 +171,15 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* S3 File Info */}
+          <div className="mt-4 p-3 bg-slate-700 rounded-lg">
+            <p className="text-xs text-gray-400">
+              <span className="font-medium">Storage:</span> AWS S3 •
+              <span className="font-medium"> File ID:</span>{" "}
+              {selectedFile.id?.substring(0, 20)}...
+            </p>
           </div>
         </div>
       </div>
@@ -617,6 +636,7 @@ const ContentManagement = () => {
                       }
                       alt={content.title}
                       className="w-full h-48 object-cover rounded-t-lg"
+                      crossOrigin="anonymous"
                       onError={(e) => {
                         // Fallback to hqdefault if maxresdefault fails
                         if (
@@ -629,7 +649,7 @@ const ContentManagement = () => {
                           );
                           e.target.src = fallbackUrl;
                         } else if (!e.target.src.includes("unsplash")) {
-                          // Final fallback to default image
+                          // Final fallback to S3 thumbnail or default image
                           e.target.src =
                             content.thumbnailFile?.url ||
                             "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=400";
@@ -637,7 +657,7 @@ const ContentManagement = () => {
                       }}
                     />
 
-                    {/* View Original Button Overlay */}
+                    {/* View Original S3 Files Button Overlay */}
                     {content.mediaFiles && content.mediaFiles.length > 0 && (
                       <div className="absolute top-3 left-3">
                         <Button
@@ -646,7 +666,7 @@ const ContentManagement = () => {
                           size="sm"
                         >
                           <Eye className="h-3 w-3 mr-1" />
-                          View Original
+                          View S3 Files
                         </Button>
                       </div>
                     )}

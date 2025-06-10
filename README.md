@@ -58,21 +58,31 @@ SkyVault bridges the gap between drone content creators and businesses looking f
 
 ### Upload Features
 
-- **AWS S3 Integration**: Secure cloud storage for all media files with CDN delivery
-- **Multi-file Upload**: Support for videos (MP4, MOV) and images (JPG, PNG)
+- **AWS S3 Integration**: Secure cloud storage for all media files with CDN delivery and global availability
+- **Multi-file Upload**: Support for videos (MP4, MOV) and images (JPG, PNG) with direct S3 upload
 - **YouTube Integration**: Add preview links for enhanced content showcase
 - **Metadata Management**: Comprehensive tagging, categorization, and location data
 - **License Configuration**: Flexible licensing options with custom pricing
 - **Technical Details**: Resolution, duration, drone model, and shooting conditions
-- **Progress Tracking**: Real-time upload progress with file management
+- **Progress Tracking**: Real-time upload progress with S3 file management
 - **Content Status**: Approval workflow with pending/approved/rejected states
+- **Public URLs**: Direct S3 public URLs for fast content delivery
 
 ### Supported Formats
 
-- **Videos**: MP4, MOV (up to 100MB per file)
-- **Images**: JPG, PNG (up to 100MB per file)
-- **Resolutions**: 4K, 2K, HD, 720p
-- **Previews**: YouTube video links for enhanced showcasing
+- **Videos**: MP4, MOV (up to 100MB per file) stored on AWS S3
+- **Images**: JPG, PNG (up to 100MB per file) stored on AWS S3
+- **Resolutions**: 4K, 2K, HD, 720p with S3 metadata storage
+- **Previews**: YouTube video links for enhanced showcasing + S3 thumbnail generation
+
+### AWS S3 Storage Benefits
+
+- **Global CDN**: Fast content delivery worldwide
+- **Secure Storage**: Enterprise-grade security and encryption
+- **Scalable**: Unlimited storage capacity
+- **Cost-Effective**: Pay only for what you use
+- **Reliable**: 99.999999999% (11 9's) durability
+- **Direct Download**: Public URLs for instant access
 
 ---
 
@@ -132,10 +142,18 @@ Implemented on both **frontend routing** and **backend API**:
 
 ### AWS S3 Configuration
 
-1. Create an S3 bucket with public read access
-2. Set up IAM user with S3 permissions
+1. Create an S3 bucket with public read access for content delivery
+2. Set up IAM user with S3 permissions (PutObject, GetObject, DeleteObject)
 3. Configure bucket CORS policy for web access
 4. Set up folder structure: `skyvault/content`
 5. Enable versioning and lifecycle policies as needed
+6. Configure CloudFront CDN for optimal performance (optional)
 
----
+### Environment Variables
+
+```
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET_NAME=your_bucket_name
+```
