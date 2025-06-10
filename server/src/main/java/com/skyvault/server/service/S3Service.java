@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -88,7 +90,7 @@ public class S3Service {
             metadata.addUserMetadata("original-name", originalFileName);
             metadata.addUserMetadata("file-type", fileType);
             
-            // Upload file to S3
+            // Upload file to S3 as PRIVATE (no public access)
             PutObjectRequest putObjectRequest = new PutObjectRequest(
                 bucketName, 
                 s3Key, 
@@ -96,18 +98,18 @@ public class S3Service {
                 metadata
             );
             
-            // Make the object publicly readable
-            putObjectRequest.setCannedAcl(CannedAccessControlList.PublicRead);
+            // Set private ACL instead of public
+            putObjectRequest.setCannedAcl(CannedAccessControlList.Private);
             
             PutObjectResult result = s3Client.putObject(putObjectRequest);
             
-            // Generate public URL
-            String publicUrl = s3Client.getUrl(bucketName, s3Key).toString();
+            // Don't generate public URL, store S3 key instead
+            String privateUrl = String.format("s3://%s/%s", bucketName, s3Key);
             
             // Create MediaFile object
             DroneContent.MediaFile mediaFile = new DroneContent.MediaFile();
             mediaFile.setId(s3Key); // Use S3 key as ID
-            mediaFile.setUrl(publicUrl);
+            mediaFile.setUrl(privateUrl); // Store private S3 URL
             mediaFile.setType(fileType);
             mediaFile.setFormat(fileExtension);
             mediaFile.setSize(file.getSize());
@@ -125,7 +127,7 @@ public class S3Service {
                 mediaFile.setHeight(null);
             }
             
-            log.info("Successfully uploaded file to S3: {} -> {}", originalFileName, publicUrl);
+            log.info("Successfully uploaded private file to S3: {} -> {}", originalFileName, s3Key);
             return mediaFile;
             
         } catch (Exception e) {
@@ -172,6 +174,48 @@ public class S3Service {
         } catch (Exception e) {
             log.error("Failed to generate presigned URL for: {}", s3Key, e);
             throw new RuntimeException("Failed to generate presigned URL: " + e.getMessage());
+        }
+    }
+    
+    // Add new method to generate presigned URLs for multiple files
+    public Map<String, String> generatePresignedUrls(List<String> s3Keys, int expirationMinutes) {
+        Map<String, String> presignedUrls = new HashMap<>();
+        
+        for (String s3Key : s3Keys) {
+            try {
+                String presignedUrl = generatePresignedUrl(s3Key, expirationMinutes);
+                presignedUrls.put(s3Key, presignedUrl);
+            } catch (Exception e) {
+                log.error("Failed to generate presigned URL for key: {}", s3Key, e);
+                // Continue with other keys, don't fail the entire operation
+            }
+        }
+        
+        return presignedUrls;
+    }
+    
+    // Add method to generate presigned URL for download
+    public String generateDownloadPresignedUrl(String s3Key, String originalFileName, int expirationMinutes) {
+        try {
+            java.util.Date expiration = new java.util.Date();
+            long expTimeMillis = expiration.getTime();
+            expTimeMillis += 1000 * 60 * expirationMinutes;
+            expiration.setTime(expTimeMillis);
+            
+            GeneratePresignedUrlRequest generatePresignedUrlRequest = 
+                new GeneratePresignedUrlRequest(bucketName, s3Key)
+                    .withMethod(HttpMethod.GET)
+                    .withExpiration(expiration);
+        
+            // Add response headers for download
+            ResponseHeaderOverrides responseHeaders = new ResponseHeaderOverrides();
+            responseHeaders.setContentDisposition("attachment; filename=\"" + originalFileName + "\"");
+            generatePresignedUrlRequest.setResponseHeaders(responseHeaders);
+                
+            return s3Client.generatePresignedUrl(generatePresignedUrlRequest).toString();
+        } catch (Exception e) {
+            log.error("Failed to generate download presigned URL for: {}", s3Key, e);
+            throw new RuntimeException("Failed to generate download presigned URL: " + e.getMessage());
         }
     }
     

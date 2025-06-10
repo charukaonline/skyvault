@@ -26,34 +26,118 @@ import {
   X,
 } from "lucide-react";
 
-// Original Video Viewer Component
-const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
+// Original Video Viewer Component - Updated for Private S3 Access
+const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [presignedUrls, setPresignedUrls] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Find the first video file or use the first file
     const videoFile =
       mediaFiles?.find((file) => file.type === "video") || mediaFiles?.[0];
     setSelectedFile(videoFile);
-  }, [mediaFiles]);
+
+    // Fetch presigned URLs for private S3 access
+    fetchPresignedUrls();
+  }, [mediaFiles, contentId]);
+
+  const fetchPresignedUrls = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE_URL
+        }/api/content/access/${contentId}/view?expirationMinutes=60`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to get access URLs");
+      }
+
+      const data = await response.json();
+      setPresignedUrls(data.urls);
+    } catch (err) {
+      console.error("Error fetching presigned URLs:", err);
+      setError("Failed to load private content");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async (file) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE_URL
+        }/api/content/access/${contentId}/download/${file.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to get download URL");
+      }
+
+      const data = await response.json();
+
+      // Open download URL in new tab
+      const link = document.createElement("a");
+      link.href = data.downloadUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      alert("Failed to download file. Please try again.");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto mb-4" />
+          <p className="text-white">Loading private content...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center">
+          <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-4" />
+          <p className="text-white mb-4">{error}</p>
+          <Button onClick={onClose} variant="outline">
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!selectedFile) return null;
 
-  const handleDownload = (file) => {
-    // For S3 files, we can directly use the public URL
-    const link = document.createElement("a");
-    link.href = file.url;
-    link.download = file.originalName || `${title}_original.${file.format}`;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-
-    // Add CORS headers for S3 download
-    link.crossOrigin = "anonymous";
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const fileUrl = presignedUrls[selectedFile.id];
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
@@ -64,7 +148,7 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
             <p className="text-gray-400 text-sm">
               {selectedFile.originalName} •{" "}
               {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB •
-              Stored on AWS S3
+              Private S3 Storage
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -74,7 +158,7 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
               size="sm"
             >
               <Download className="h-4 w-4 mr-2" />
-              Download from S3
+              Secure Download
             </Button>
             <Button
               onClick={onClose}
@@ -92,53 +176,62 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
           {mediaFiles && mediaFiles.length > 1 && (
             <div className="mb-4">
               <p className="text-gray-300 text-sm mb-2">
-                Select S3 file to view:
+                Select private file to view:
               </p>
               <div className="flex flex-wrap gap-2">
-                {mediaFiles.map((file, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedFile(file)}
-                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                      selectedFile === file
-                        ? "bg-blue-600 text-white border-blue-500"
-                        : "bg-slate-700 text-gray-300 border-slate-600 hover:border-slate-500"
-                    }`}
-                  >
-                    {file.type === "video" ? (
-                      <FileVideo className="h-3 w-3 inline mr-1" />
-                    ) : (
-                      <Image className="h-3 w-3 inline mr-1" />
-                    )}
-                    {file.originalName || `${file.type}_${index + 1}`}
-                  </button>
-                ))}
+                {mediaFiles.map((file, index) => {
+                  const hasUrl = presignedUrls[file.id];
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedFile(file)}
+                      disabled={!hasUrl}
+                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFile === file
+                          ? "bg-blue-600 text-white border-blue-500"
+                          : hasUrl
+                          ? "bg-slate-700 text-gray-300 border-slate-600 hover:border-slate-500"
+                          : "bg-slate-800 text-gray-500 border-slate-700 cursor-not-allowed"
+                      }`}
+                    >
+                      {file.type === "video" ? (
+                        <FileVideo className="h-3 w-3 inline mr-1" />
+                      ) : (
+                        <Image className="h-3 w-3 inline mr-1" />
+                      )}
+                      {file.originalName || `${file.type}_${index + 1}`}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Media Display - S3 URLs */}
+          {/* Media Display - Private S3 URLs */}
           <div className="bg-black rounded-lg overflow-hidden">
-            {selectedFile.type === "video" ? (
-              <video
-                controls
-                className="w-full max-h-[60vh] object-contain"
-                preload="metadata"
-                crossOrigin="anonymous"
-              >
-                <source
-                  src={selectedFile.url}
-                  type={`video/${selectedFile.format}`}
+            {fileUrl ? (
+              selectedFile.type === "video" ? (
+                <video
+                  controls
+                  className="w-full max-h-[60vh] object-contain"
+                  preload="metadata"
+                  crossOrigin="anonymous"
+                >
+                  <source src={fileUrl} type={`video/${selectedFile.format}`} />
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={fileUrl}
+                  alt={selectedFile.originalName}
+                  className="w-full max-h-[60vh] object-contain"
+                  crossOrigin="anonymous"
                 />
-                Your browser does not support the video tag.
-              </video>
+              )
             ) : (
-              <img
-                src={selectedFile.url}
-                alt={selectedFile.originalName}
-                className="w-full max-h-[60vh] object-contain"
-                crossOrigin="anonymous"
-              />
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-400">Failed to load secure content</p>
+              </div>
             )}
           </div>
 
@@ -173,10 +266,11 @@ const OriginalVideoViewer = ({ mediaFiles, title, onClose }) => {
             )}
           </div>
 
-          {/* S3 File Info */}
+          {/* S3 Security Info */}
           <div className="mt-4 p-3 bg-slate-700 rounded-lg">
             <p className="text-xs text-gray-400">
-              <span className="font-medium">Storage:</span> AWS S3 •
+              <span className="font-medium">Security:</span> Private AWS S3
+              Storage with temporary access •
               <span className="font-medium"> File ID:</span>{" "}
               {selectedFile.id?.substring(0, 20)}...
             </p>
@@ -838,6 +932,7 @@ const ContentManagement = () => {
         <OriginalVideoViewer
           mediaFiles={selectedContentForViewing.mediaFiles}
           title={selectedContentForViewing.title}
+          contentId={selectedContentForViewing.id}
           onClose={() => setSelectedContentForViewing(null)}
         />
       )}
