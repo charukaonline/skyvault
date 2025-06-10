@@ -74,18 +74,30 @@ public class ContentAccessService {
      * Generate presigned URLs for content access
      */
     public Map<String, String> generateContentUrls(String userId, String contentId, int expirationMinutes) {
+        log.info("Generating content URLs for user {} and content {}", userId, contentId);
+        
         if (!hasAccess(userId, contentId)) {
+            log.warn("User {} denied access to content {}", userId, contentId);
             throw new SecurityException("User does not have access to this content");
         }
         
         DroneContent content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new RuntimeException("Content not found"));
         
+        if (content.getMediaFiles() == null || content.getMediaFiles().isEmpty()) {
+            log.warn("No media files found for content {}", contentId);
+            return new HashMap<>();
+        }
+        
         List<String> s3Keys = content.getMediaFiles().stream()
                 .map(DroneContent.MediaFile::getId)
                 .collect(Collectors.toList());
         
-        return s3Service.generatePresignedUrls(s3Keys, expirationMinutes);
+        log.info("Generating presigned URLs for {} files", s3Keys.size());
+        Map<String, String> urls = s3Service.generatePresignedUrls(s3Keys, expirationMinutes);
+        log.info("Generated {} presigned URLs", urls.size());
+        
+        return urls;
     }
     
     /**

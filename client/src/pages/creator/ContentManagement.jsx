@@ -24,6 +24,8 @@ import {
   MoreVertical,
   Play,
   X,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 // Original Video Viewer Component - Updated for Private S3 Access
@@ -32,6 +34,8 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
   const [presignedUrls, setPresignedUrls] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloadingFiles, setDownloadingFiles] = useState(new Set());
+  const { showSuccess, showError } = useNotification();
 
   useEffect(() => {
     // Find the first video file or use the first file
@@ -46,7 +50,14 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
   const fetchPresignedUrls = async () => {
     try {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      console.log(`Fetching presigned URLs for content: ${contentId}`);
 
       const response = await fetch(
         `${
@@ -61,14 +72,23 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to get access URLs");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Failed to get access URLs (${response.status})`
+        );
       }
 
       const data = await response.json();
-      setPresignedUrls(data.urls);
+      console.log("Received presigned URLs:", data);
+
+      if (data.urls && Object.keys(data.urls).length > 0) {
+        setPresignedUrls(data.urls);
+      } else {
+        throw new Error("No access URLs received");
+      }
     } catch (err) {
       console.error("Error fetching presigned URLs:", err);
-      setError("Failed to load private content");
+      setError(`Failed to load private content: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -76,6 +96,7 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
 
   const handleDownload = async (file) => {
     try {
+      setDownloadingFiles((prev) => new Set([...prev, file.id]));
       const token = localStorage.getItem("token");
 
       const response = await fetch(
@@ -91,42 +112,71 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to get download URL");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to get download URL");
       }
 
       const data = await response.json();
 
-      // Open download URL in new tab
+      // Create download link
       const link = document.createElement("a");
       link.href = data.downloadUrl;
+      link.download = file.originalName || `${file.type}_${file.id}`;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Show success message
+      showSuccess(
+        "Download Started",
+        `${file.originalName} download initiated`
+      );
     } catch (error) {
       console.error("Error downloading file:", error);
-      alert("Failed to download file. Please try again.");
+      showError("Download Failed", `Failed to download file: ${error.message}`);
+    } finally {
+      setDownloadingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-        <div className="bg-slate-800 rounded-lg p-8 text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto mb-4" />
-          <p className="text-white">Loading private content...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleDownloadAll = async () => {
+    if (!mediaFiles || mediaFiles.length === 0) return;
 
-  if (error) {
+    try {
+      setDownloadingFiles((prev) => new Set([...prev, "all"]));
+
+      for (const file of mediaFiles) {
+        await handleDownload(file);
+        // Add small delay between downloads to avoid overwhelming the server
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    } catch (error) {
+      console.error("Error downloading all files:", error);
+      showError("Download Failed", "Failed to download all files");
+    } finally {
+      setDownloadingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete("all");
+        return newSet;
+      });
+    }
+  };
+
+  // Handle case where mediaFiles is empty or null
+  if (!mediaFiles || mediaFiles.length === 0) {
     return (
       <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
         <div className="bg-slate-800 rounded-lg p-8 text-center">
-          <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-4" />
-          <p className="text-white mb-4">{error}</p>
+          <AlertCircle className="h-8 w-8 text-yellow-400 mx-auto mb-4" />
+          <p className="text-white mb-4">
+            No media files found for this content
+          </p>
           <Button onClick={onClose} variant="outline">
             Close
           </Button>
@@ -135,7 +185,57 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
     );
   }
 
-  if (!selectedFile) return null;
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto mb-4" />
+          <p className="text-white">Loading private content...</p>
+          <p className="text-gray-400 text-sm mt-2">
+            Fetching secure S3 URLs...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center max-w-md">
+          <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-4" />
+          <p className="text-white mb-4">{error}</p>
+          <div className="space-y-2">
+            <Button
+              onClick={fetchPresignedUrls}
+              variant="outline"
+              className="w-full"
+            >
+              <Loader2 className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            <Button onClick={onClose} variant="ghost" className="w-full">
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedFile) {
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-lg p-8 text-center">
+          <AlertCircle className="h-8 w-8 text-yellow-400 mx-auto mb-4" />
+          <p className="text-white mb-4">No file selected</p>
+          <Button onClick={onClose} variant="outline">
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const fileUrl = presignedUrls[selectedFile.id];
 
@@ -146,20 +246,52 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
           <div>
             <h3 className="text-white font-medium truncate">{title}</h3>
             <p className="text-gray-400 text-sm">
-              {selectedFile.originalName} •{" "}
-              {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB •
+              {selectedFile?.originalName || selectedFile?.id} •{" "}
+              {((selectedFile?.size || 0) / (1024 * 1024)).toFixed(2)} MB •
               Private S3 Storage
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              onClick={() => handleDownload(selectedFile)}
-              className="bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Secure Download
-            </Button>
+            {mediaFiles && mediaFiles.length > 1 && (
+              <Button
+                onClick={handleDownloadAll}
+                disabled={downloadingFiles.has("all")}
+                className="bg-purple-600 hover:bg-purple-700"
+                size="sm"
+              >
+                {downloadingFiles.has("all") ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Downloading All...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download All ({mediaFiles.length})
+                  </>
+                )}
+              </Button>
+            )}
+            {selectedFile && (
+              <Button
+                onClick={() => handleDownload(selectedFile)}
+                disabled={downloadingFiles.has(selectedFile.id)}
+                className="bg-green-600 hover:bg-green-700"
+                size="sm"
+              >
+                {downloadingFiles.has(selectedFile.id) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Original
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               onClick={onClose}
               variant="ghost"
@@ -175,32 +307,73 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
           {/* File Selection if multiple files */}
           {mediaFiles && mediaFiles.length > 1 && (
             <div className="mb-4">
-              <p className="text-gray-300 text-sm mb-2">
-                Select private file to view:
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-300 text-sm">
+                  Select original file to view ({mediaFiles.length} files):
+                </p>
+                <div className="text-xs text-gray-500">
+                  Total Size:{" "}
+                  {(
+                    mediaFiles.reduce(
+                      (sum, file) => sum + (file.size || 0),
+                      0
+                    ) /
+                    (1024 * 1024)
+                  ).toFixed(2)}{" "}
+                  MB
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {mediaFiles.map((file, index) => {
                   const hasUrl = presignedUrls[file.id];
+                  const isDownloading = downloadingFiles.has(file.id);
                   return (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedFile(file)}
-                      disabled={!hasUrl}
-                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFile === file
-                          ? "bg-blue-600 text-white border-blue-500"
-                          : hasUrl
-                          ? "bg-slate-700 text-gray-300 border-slate-600 hover:border-slate-500"
-                          : "bg-slate-800 text-gray-500 border-slate-700 cursor-not-allowed"
-                      }`}
-                    >
-                      {file.type === "video" ? (
-                        <FileVideo className="h-3 w-3 inline mr-1" />
-                      ) : (
-                        <Image className="h-3 w-3 inline mr-1" />
-                      )}
-                      {file.originalName || `${file.type}_${index + 1}`}
-                    </button>
+                    <div key={file.id || index} className="relative">
+                      <button
+                        onClick={() => setSelectedFile(file)}
+                        disabled={!hasUrl || isDownloading}
+                        className={`px-3 py-2 text-xs rounded-lg border transition-colors ${
+                          selectedFile === file
+                            ? "bg-blue-600 text-white border-blue-500"
+                            : hasUrl && !isDownloading
+                            ? "bg-slate-700 text-gray-300 border-slate-600 hover:border-slate-500"
+                            : "bg-slate-800 text-gray-500 border-slate-700 cursor-not-allowed"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {file.type === "video" ? (
+                            <FileVideo className="h-3 w-3" />
+                          ) : (
+                            <Image className="h-3 w-3" />
+                          )}
+                          <div className="text-left">
+                            <div className="font-medium">
+                              {file.originalName ||
+                                file.id ||
+                                `${file.type}_${index + 1}`}
+                            </div>
+                            <div className="text-gray-400">
+                              {((file.size || 0) / (1024 * 1024)).toFixed(1)} MB
+                            </div>
+                          </div>
+                          {isDownloading && (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          )}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => handleDownload(file)}
+                        disabled={!hasUrl || isDownloading}
+                        className="absolute -top-1 -right-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-full p-1 text-xs"
+                        title="Download this file"
+                      >
+                        {isDownloading ? (
+                          <Loader2 className="h-2 w-2 animate-spin" />
+                        ) : (
+                          <Download className="h-2 w-2" />
+                        )}
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -211,43 +384,83 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
           <div className="bg-black rounded-lg overflow-hidden">
             {fileUrl ? (
               selectedFile.type === "video" ? (
-                <video
-                  controls
-                  className="w-full max-h-[60vh] object-contain"
-                  preload="metadata"
-                  crossOrigin="anonymous"
-                >
-                  <source src={fileUrl} type={`video/${selectedFile.format}`} />
-                  Your browser does not support the video tag.
-                </video>
+                <div className="relative">
+                  <video
+                    controls
+                    className="w-full max-h-[60vh] object-contain"
+                    preload="metadata"
+                    crossOrigin="anonymous"
+                    poster={selectedFile.thumbnailUrl}
+                  >
+                    <source
+                      src={fileUrl}
+                      type={`video/${selectedFile.format || "mp4"}`}
+                    />
+                    Your browser does not support the video tag.
+                  </video>
+                  <div className="absolute bottom-4 right-4">
+                    <Badge className="bg-red-600/80 text-white">
+                      <FileVideo className="h-3 w-3 mr-1" />
+                      Original Quality
+                    </Badge>
+                  </div>
+                </div>
               ) : (
-                <img
-                  src={fileUrl}
-                  alt={selectedFile.originalName}
-                  className="w-full max-h-[60vh] object-contain"
-                  crossOrigin="anonymous"
-                />
+                <div className="relative">
+                  <img
+                    src={fileUrl}
+                    alt={selectedFile.originalName || selectedFile.id}
+                    className="w-full max-h-[60vh] object-contain"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      console.error("Failed to load image:", e);
+                      setError("Failed to load image from secure URL");
+                    }}
+                  />
+                  <div className="absolute bottom-4 right-4">
+                    <Badge className="bg-blue-600/80 text-white">
+                      <Image className="h-3 w-3 mr-1" />
+                      Original Quality
+                    </Badge>
+                  </div>
+                </div>
               )
             ) : (
               <div className="flex items-center justify-center h-64">
-                <p className="text-gray-400">Failed to load secure content</p>
+                <div className="text-center">
+                  <AlertCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-400">Failed to load secure content</p>
+                  <p className="text-gray-500 text-sm mb-4">
+                    File ID: {selectedFile.id}
+                  </p>
+                  <Button
+                    onClick={fetchPresignedUrls}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Loader2 className="h-4 w-4 mr-2" />
+                    Retry
+                  </Button>
+                </div>
               </div>
             )}
           </div>
 
-          {/* File Details */}
+          {/* Enhanced File Details */}
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-gray-400">Format</p>
-              <p className="text-white">{selectedFile.format?.toUpperCase()}</p>
+              <p className="text-white">
+                {selectedFile?.format?.toUpperCase() || "Unknown"}
+              </p>
             </div>
             <div>
               <p className="text-gray-400">Size</p>
               <p className="text-white">
-                {((selectedFile.size || 0) / (1024 * 1024)).toFixed(2)} MB
+                {((selectedFile?.size || 0) / (1024 * 1024)).toFixed(2)} MB
               </p>
             </div>
-            {selectedFile.width && (
+            {selectedFile?.width && (
               <div>
                 <p className="text-gray-400">Resolution</p>
                 <p className="text-white">
@@ -255,7 +468,7 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
                 </p>
               </div>
             )}
-            {selectedFile.duration && (
+            {selectedFile?.duration && (
               <div>
                 <p className="text-gray-400">Duration</p>
                 <p className="text-white">
@@ -268,12 +481,19 @@ const OriginalVideoViewer = ({ mediaFiles, title, contentId, onClose }) => {
 
           {/* S3 Security Info */}
           <div className="mt-4 p-3 bg-slate-700 rounded-lg">
-            <p className="text-xs text-gray-400">
-              <span className="font-medium">Security:</span> Private AWS S3
-              Storage with temporary access •
-              <span className="font-medium"> File ID:</span>{" "}
-              {selectedFile.id?.substring(0, 20)}...
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-400">
+                  <span className="font-medium">Security:</span> Private AWS S3
+                  Storage with temporary access •
+                  <span className="font-medium"> File ID:</span>{" "}
+                  {selectedFile?.id?.substring(0, 20)}...
+                </p>
+              </div>
+              <div className="text-xs text-gray-400">
+                Access expires in 60 minutes
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -751,16 +971,16 @@ const ContentManagement = () => {
                       }}
                     />
 
-                    {/* View Original S3 Files Button Overlay */}
+                    {/* Enhanced View Original S3 Files Button Overlay */}
                     {content.mediaFiles && content.mediaFiles.length > 0 && (
                       <div className="absolute top-3 left-3">
                         <Button
                           onClick={() => setSelectedContentForViewing(content)}
-                          className="bg-slate-900/80 hover:bg-slate-800 text-white border border-slate-600 backdrop-blur-sm"
+                          className="bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-600 backdrop-blur-sm shadow-lg"
                           size="sm"
                         >
                           <Eye className="h-3 w-3 mr-1" />
-                          View S3 Files
+                          View Originals ({content.mediaFiles.length})
                         </Button>
                       </div>
                     )}
@@ -784,6 +1004,12 @@ const ContentManagement = () => {
                         <Badge className="bg-blue-500/20 text-blue-400">
                           <Image className="h-3 w-3 mr-1" />
                           Photo
+                        </Badge>
+                      )}
+                      {/* File count badge */}
+                      {content.mediaFiles && content.mediaFiles.length > 1 && (
+                        <Badge className="bg-green-500/20 text-green-400">
+                          {content.mediaFiles.length} Files
                         </Badge>
                       )}
                     </div>
@@ -819,6 +1045,28 @@ const ContentManagement = () => {
                       <Calendar className="h-4 w-4 mr-1" />
                       {new Date(content.createdAt).toLocaleDateString()}
                     </div>
+
+                    {/* Enhanced file info */}
+                    {content.mediaFiles && content.mediaFiles.length > 0 && (
+                      <div className="mb-3 p-2 bg-slate-700/50 rounded text-xs text-gray-400">
+                        <div className="flex items-center justify-between">
+                          <span>
+                            {content.mediaFiles.length} original file
+                            {content.mediaFiles.length > 1 ? "s" : ""} in S3
+                          </span>
+                          <span>
+                            {(
+                              content.mediaFiles.reduce(
+                                (sum, file) => sum + (file.size || 0),
+                                0
+                              ) /
+                              (1024 * 1024)
+                            ).toFixed(1)}{" "}
+                            MB total
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-1 mb-3">
                       {content.tags?.slice(0, 3).map((tag) => (
@@ -867,11 +1115,14 @@ const ContentManagement = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 w-8 p-0"
+                          className="h-8 px-2"
                           onClick={() => setSelectedContentForViewing(content)}
-                          title="View Original Files"
+                          title={`View ${
+                            content.mediaFiles?.length || 0
+                          } Original Files`}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4 mr-1" />
+                          <span className="text-xs">Originals</span>
                         </Button>
                         <Button
                           size="sm"
