@@ -227,7 +227,7 @@ const UploadContent = () => {
             const response = JSON.parse(xhr.responseText);
             showSuccess(
               "Content Uploaded Successfully!",
-              "Your drone footage has been uploaded to S3 and is pending review."
+              "Your drone footage has been uploaded to private S3 storage for download-only access and is pending review."
             );
 
             // Reset form
@@ -481,11 +481,11 @@ const UploadContent = () => {
                   <label htmlFor="media-upload" className="cursor-pointer">
                     <CloudUpload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-lg font-medium text-gray-300 mb-2">
-                      Select Videos & Images for S3 Upload
+                      Select Videos & Images for Private S3 Storage
                     </p>
                     <p className="text-sm text-gray-500">
                       Supports MP4, MOV, JPG, PNG (Max 100MB per file) • Stored
-                      securely on AWS S3
+                      privately on AWS S3 for download-only access
                     </p>
                   </label>
                 </div>

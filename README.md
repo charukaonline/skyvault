@@ -58,7 +58,7 @@ SkyVault bridges the gap between drone content creators and businesses looking f
 
 ### Upload Features
 
-- **Private AWS S3 Integration**: Secure cloud storage for all media files with presigned URL access
+- **Private AWS S3 Integration**: Secure cloud storage for all media files with download-only access
 - **Multi-file Upload**: Support for videos (MP4, MOV) and images (JPG, PNG) with direct private S3 upload
 - **YouTube Integration**: Add preview links for enhanced content showcase (public previews)
 - **Metadata Management**: Comprehensive tagging, categorization, and location data
@@ -66,32 +66,33 @@ SkyVault bridges the gap between drone content creators and businesses looking f
 - **Technical Details**: Resolution, duration, drone model, and shooting conditions
 - **Progress Tracking**: Real-time upload progress with secure S3 file management
 - **Content Status**: Approval workflow with pending/approved/rejected states
-- **Private Access Control**: Secure presigned URLs for authorized access only
+- **Download-Only Access Control**: Secure presigned URLs for authorized downloads only (no streaming)
 
 ### Supported Formats
 
-- **Videos**: MP4, MOV (up to 100MB per file) stored privately on AWS S3
-- **Images**: JPG, PNG (up to 100MB per file) stored privately on AWS S3
+- **Videos**: MP4, MOV (up to 100MB per file) stored privately on AWS S3 for download only
+- **Images**: JPG, PNG (up to 100MB per file) stored privately on AWS S3 for download only
 - **Resolutions**: 4K, 2K, HD, 720p with secure S3 metadata storage
-- **Previews**: YouTube video links for public showcasing + private S3 presigned URLs for authorized users
+- **Previews**: YouTube video links for public showcasing + limited S3 presigned URLs for authorized preview only
 
 ### AWS S3 Private Storage Benefits
 
-- **Enhanced Security**: All files stored privately with no public access
-- **Presigned URLs**: Temporary access URLs for authorized users only
-- **Access Control**: Role-based access (creators see own content, buyers see purchased content)
+- **Enhanced Security**: All files stored privately with no public access or streaming
+- **Download-Only URLs**: Time-limited download URLs for authorized users only
+- **Access Control**: Role-based access (creators download own content, buyers download purchased content)
 - **Scalable**: Unlimited storage capacity with enterprise-grade security
-- **Cost-Effective**: Pay only for storage and requests used
+- **Cost-Effective**: Pay only for storage and download requests used
 - **Reliable**: 99.999999999% (11 9's) durability
-- **Secure Downloads**: Time-limited download URLs for purchased content
+- **Secure Downloads**: Time-limited download URLs for purchased content (no streaming)
 
 ### Security Architecture
 
-- **Private by Default**: All uploaded content is stored privately on S3
-- **Presigned URL Access**: Temporary URLs generated for authorized users (15min-2hr expiration)
-- **Role-Based Security**: Creators access own content, buyers access purchased content, admins access all
-- **Purchase Verification**: Access control integrated with purchase tracking system
-- **Audit Trail**: All access attempts logged for security monitoring
+- **Private by Default**: All uploaded content is stored privately on S3 with no streaming access
+- **Download-Only URLs**: Time-limited download URLs generated for authorized users (30min-1hr expiration)
+- **Role-Based Security**: Creators download own content, buyers download purchased content, admins download all
+- **Purchase Verification**: Download access control integrated with purchase tracking system
+- **Audit Trail**: All download attempts logged for security monitoring
+- **No Streaming**: Original files are download-only, preventing unauthorized streaming or copying
 
 ---
 

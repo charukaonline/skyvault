@@ -22,53 +22,8 @@ public class ContentAccessController {
     private final JwtService jwtService;
     
     /**
-     * Get presigned URLs for private S3 content viewing (for purchased content)
-     */
-    @GetMapping("/{contentId}/view")
-    public ResponseEntity<?> getViewUrls(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String contentId,
-            @RequestParam(defaultValue = "60") int expirationMinutes) {
-        
-        try {
-            String jwt = token.replace("Bearer ", "");
-            String userId = jwtService.extractUserId(jwt);
-            
-            if (userId == null || userId.trim().isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("message", "Invalid authentication token");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
-            }
-            
-            // Limit expiration time for security (max 2 hours for private content)
-            int maxExpiration = Math.min(expirationMinutes, 120);
-            
-            Map<String, String> urls = contentAccessService.generateContentUrls(
-                userId, contentId, maxExpiration);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("urls", urls);
-            response.put("expirationMinutes", maxExpiration);
-            response.put("message", "Private S3 URLs generated successfully");
-            response.put("security", "Temporary access to private content");
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (SecurityException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", "Access denied: " + e.getMessage());
-            error.put("type", "security_error");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-        } catch (Exception e) {
-            log.error("Error generating private S3 URLs for content: {}", contentId, e);
-            Map<String, String> error = new HashMap<>();
-            error.put("message", "Failed to generate secure access URLs");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-    
-    /**
      * Get presigned URL for high-quality file download (purchased content only)
+     * No streaming - download only
      */
     @GetMapping("/{contentId}/download/{fileId}")
     public ResponseEntity<?> getDownloadUrl(
@@ -97,7 +52,8 @@ public class ContentAccessController {
             response.put("downloadUrl", downloadUrl);
             response.put("expirationMinutes", maxExpiration);
             response.put("message", "Private download URL generated successfully");
-            response.put("security", "Secure S3 download link with limited time access");
+            response.put("security", "Secure S3 download link - no streaming, download only");
+            response.put("access", "time-limited");
             
             return ResponseEntity.ok(response);
             
@@ -115,7 +71,54 @@ public class ContentAccessController {
     }
     
     /**
-     * Get presigned URLs for content preview (for approved public content browsing)
+     * Get presigned URLs for batch download (all files in content)
+     */
+    @GetMapping("/{contentId}/download-all")
+    public ResponseEntity<?> getBatchDownloadUrls(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String contentId,
+            @RequestParam(defaultValue = "30") int expirationMinutes) {
+        
+        try {
+            String jwt = token.replace("Bearer ", "");
+            String userId = jwtService.extractUserId(jwt);
+            
+            if (userId == null || userId.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Invalid authentication token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+            
+            // Limit expiration time for downloads (max 1 hour for security)
+            int maxExpiration = Math.min(expirationMinutes, 60);
+            
+            Map<String, String> downloadUrls = contentAccessService.generateDownloadUrls(
+                userId, contentId, maxExpiration);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("downloadUrls", downloadUrls);
+            response.put("fileCount", downloadUrls.size());
+            response.put("expirationMinutes", maxExpiration);
+            response.put("message", "Batch download URLs generated successfully");
+            response.put("security", "Secure S3 download links - no streaming, download only");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (SecurityException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "Access denied: " + e.getMessage());
+            error.put("type", "purchase_required");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        } catch (Exception e) {
+            log.error("Error generating batch download URLs for content: {}", contentId, e);
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "Failed to generate download URLs");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+    
+    /**
+     * Get presigned URLs for content preview (thumbnails only - for approved public content browsing)
      */
     @GetMapping("/{contentId}/preview")
     public ResponseEntity<?> getPreviewUrls(
@@ -132,14 +135,14 @@ public class ContentAccessController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
             }
             
-            Map<String, String> urls = contentAccessService.generatePreviewUrls(userId, contentId);
+            Map<String, String> urls = contentAccessService.generateDownloadUrls(userId, contentId, 5);
             
             Map<String, Object> response = new HashMap<>();
             response.put("urls", urls);
-            response.put("expirationMinutes", 15);
+            response.put("expirationMinutes", 5);
             response.put("message", "Preview URLs generated successfully");
-            response.put("security", "Limited time preview access");
-            response.put("note", "These are temporary URLs for content preview only");
+            response.put("security", "Very limited time preview access - not for download");
+            response.put("note", "These are temporary URLs for thumbnails/previews only, not original files");
             
             return ResponseEntity.ok(response);
             

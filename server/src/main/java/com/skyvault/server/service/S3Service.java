@@ -80,17 +80,18 @@ public class S3Service {
         String s3Key = folderName + "/" + uniqueFileName;
         
         try {
-            // Create metadata
+            // Create metadata for private storage
             ObjectMetadata metadata = new ObjectMetadata();
             metadata.setContentLength(file.getSize());
             metadata.setContentType(file.getContentType());
-            metadata.setCacheControl("max-age=31536000"); // 1 year cache
+            metadata.setCacheControl("private, no-cache, must-revalidate"); // Strict private caching
             
             // Add custom metadata
             metadata.addUserMetadata("original-name", originalFileName);
             metadata.addUserMetadata("file-type", fileType);
+            metadata.addUserMetadata("upload-purpose", "download-only"); // Mark as download-only
             
-            // Upload file to S3 as PRIVATE (no public access)
+            // Upload file to S3 as STRICTLY PRIVATE (no streaming access)
             PutObjectRequest putObjectRequest = new PutObjectRequest(
                 bucketName, 
                 s3Key, 
@@ -98,36 +99,34 @@ public class S3Service {
                 metadata
             );
             
-            // Set private ACL instead of public
+            // Set private ACL - no public access, download-only
             putObjectRequest.setCannedAcl(CannedAccessControlList.Private);
             
             PutObjectResult result = s3Client.putObject(putObjectRequest);
             
-            // Don't generate public URL, store S3 key instead
+            // Store private S3 reference (no public URL)
             String privateUrl = String.format("s3://%s/%s", bucketName, s3Key);
             
             // Create MediaFile object
             DroneContent.MediaFile mediaFile = new DroneContent.MediaFile();
-            mediaFile.setId(s3Key); // Use S3 key as ID
-            mediaFile.setUrl(privateUrl); // Store private S3 URL
+            mediaFile.setId(s3Key); // Use S3 key as ID for download access
+            mediaFile.setUrl(privateUrl); // Store private S3 reference
             mediaFile.setType(fileType);
             mediaFile.setFormat(fileExtension);
             mediaFile.setSize(file.getSize());
             mediaFile.setOriginalName(originalFileName);
             
-            // For images, we can get basic info, for videos we'd need additional processing
+            // Basic metadata without dimensions (download-only focus)
             if (fileType.equals("image")) {
-                // Basic image handling - you might want to add image dimension reading
-                mediaFile.setWidth(null); // You can add image processing library to get dimensions
+                mediaFile.setWidth(null); // Not needed for download-only
                 mediaFile.setHeight(null);
             } else if (fileType.equals("video")) {
-                // Basic video handling - you might want to add video processing to get duration/dimensions
-                mediaFile.setDuration(null); // You can add video processing library
+                mediaFile.setDuration(null); // Not needed for download-only
                 mediaFile.setWidth(null);
                 mediaFile.setHeight(null);
             }
             
-            log.info("Successfully uploaded private file to S3: {} -> {}", originalFileName, s3Key);
+            log.info("Successfully uploaded private file to S3 (download-only): {} -> {}", originalFileName, s3Key);
             return mediaFile;
             
         } catch (Exception e) {

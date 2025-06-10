@@ -116,10 +116,10 @@ public class ContentAccessService {
     }
     
     /**
-     * Generate download URL for purchased private content
+     * Generate download URL for purchased private content (no streaming)
      */
     public String generateDownloadUrl(String userId, String contentId, String fileId, int expirationMinutes) {
-        log.info("Generating download URL for user {} content {} file {}", userId, contentId, fileId);
+        log.info("Generating download-only URL for user {} content {} file {}", userId, contentId, fileId);
         
         if (!hasAccess(userId, contentId)) {
             throw new SecurityException("User does not have access to this private content");
@@ -133,7 +133,7 @@ public class ContentAccessService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Private file not found"));
         
-        // Generate presigned download URL for private S3 file
+        // Generate presigned download URL for private S3 file (download-only, no streaming)
         return s3Service.generateDownloadPresignedUrl(
             fileId, // S3 key
             mediaFile.getOriginalName(), 
@@ -142,36 +142,41 @@ public class ContentAccessService {
     }
     
     /**
-     * Generate preview URLs for public browsing (approved content only)
+     * Generate download URLs for all files in content (batch download)
      */
-    public Map<String, String> generatePreviewUrls(String userId, String contentId) {
-        User user = userRepository.findById(userId).orElse(null);
-        DroneContent content = contentRepository.findById(contentId).orElse(null);
+    public Map<String, String> generateDownloadUrls(String userId, String contentId, int expirationMinutes) {
+        log.info("Generating batch download URLs for user {} and content {}", userId, contentId);
         
-        if (user == null || content == null) {
-            throw new RuntimeException("User or content not found");
+        if (!hasAccess(userId, contentId)) {
+            log.warn("User {} denied access to private content {}", userId, contentId);
+            throw new SecurityException("User does not have access to this private content");
         }
         
-        // For public previews, only allow approved content
-        if (content.getStatus() != DroneContent.ContentStatus.APPROVED) {
-            // Exception: allow creators to preview their own content and admins
-            if (user.getRole() != User.UserRole.admin && 
-                !content.getCreatorId().equals(userId)) {
-                throw new SecurityException("Content is not available for public preview");
-            }
-        }
+        DroneContent content = contentRepository.findById(contentId)
+                .orElseThrow(() -> new RuntimeException("Content not found"));
         
         if (content.getMediaFiles() == null || content.getMediaFiles().isEmpty()) {
-            log.warn("No media files found for preview of content {}", contentId);
+            log.warn("No private media files found for content {}", contentId);
             return new HashMap<>();
         }
         
-        List<String> s3Keys = content.getMediaFiles().stream()
-                .map(DroneContent.MediaFile::getId)
-                .collect(Collectors.toList());
+        // Generate download URLs for all files (no streaming)
+        Map<String, String> downloadUrls = new HashMap<>();
+        for (DroneContent.MediaFile mediaFile : content.getMediaFiles()) {
+            try {
+                String downloadUrl = s3Service.generateDownloadPresignedUrl(
+                    mediaFile.getId(), 
+                    mediaFile.getOriginalName(), 
+                    expirationMinutes
+                );
+                downloadUrls.put(mediaFile.getId(), downloadUrl);
+            } catch (Exception e) {
+                log.error("Failed to generate download URL for file: {}", mediaFile.getId(), e);
+            }
+        }
         
-        // Shorter expiration for previews (15 minutes) for security
-        return s3Service.generatePresignedUrls(s3Keys, 15);
+        log.info("Generated {} download URLs for private content", downloadUrls.size());
+        return downloadUrls;
     }
     
     /**

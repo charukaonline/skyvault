@@ -98,17 +98,18 @@ public class ContentService {
             content.setCreatedAt(LocalDateTime.now());
             content.setUpdatedAt(LocalDateTime.now());
             
-            // Upload files to S3 instead of Cloudinary
+            // Upload files to S3 for secure download-only access (no streaming)
             List<DroneContent.MediaFile> mediaFiles = s3Service.uploadMultipleFiles(files, "skyvault/content");
             content.setMediaFiles(mediaFiles);
             
-            // Set thumbnail (first image or video thumbnail)
+            // Set thumbnail reference (first image for preview generation)
             if (!mediaFiles.isEmpty()) {
                 content.setThumbnailFile(mediaFiles.get(0));
             }
             
             DroneContent savedContent = contentRepository.save(content);
-            log.info("Content uploaded successfully: {} by creator: {}", savedContent.getId(), creatorId);
+            log.info("Content uploaded successfully with {} files for download-only access: {} by creator: {}", 
+                    mediaFiles.size(), savedContent.getId(), creatorId);
             
             return convertToResponse(savedContent, creator);
             
