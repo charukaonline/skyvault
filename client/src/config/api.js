@@ -25,7 +25,7 @@ export const apiConfig = {
       adminContent: `${API_BASE_URL}/api/content/admin/all`,
       updateStatus: (id) => `${API_BASE_URL}/api/content/admin/${id}/status`,
 
-      // Content access endpoints (NEW)
+      // Content access endpoints for private S3 files
       access: {
         view: (contentId) =>
           `${API_BASE_URL}/api/content/access/${contentId}/view`,
@@ -35,6 +35,8 @@ export const apiConfig = {
           `${API_BASE_URL}/api/content/access/${contentId}/preview`,
         check: (contentId) =>
           `${API_BASE_URL}/api/content/access/${contentId}/check`,
+        thumbnail: (contentId) =>
+          `${API_BASE_URL}/api/content/access/${contentId}/thumbnail`,
       },
     },
     admin: {

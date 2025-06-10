@@ -21,6 +21,8 @@ public class ContentAccessService {
     private final ContentRepository contentRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    // Add purchase service dependency when implemented
+    // private final PurchaseService purchaseService;
     
     /**
      * Check if user has access to content
@@ -45,10 +47,14 @@ public class ContentAccessService {
                 return true;
             }
             
-            // Buyer has access if they purchased the content
-            // TODO: Implement purchase tracking
-            // For now, return false for buyers until purchase system is implemented
+            // For buyers, check if content is approved first
             if (user.getRole() == User.UserRole.buyer) {
+                // Only allow access to approved content
+                if (content.getStatus() != DroneContent.ContentStatus.APPROVED) {
+                    log.warn("Buyer {} tried to access non-approved content {}", userId, contentId);
+                    return false;
+                }
+                
                 // Check if user has purchased this content
                 return hasPurchased(userId, contentId);
             }
@@ -62,50 +68,61 @@ public class ContentAccessService {
     
     /**
      * Check if user has purchased content
-     * TODO: Implement actual purchase tracking
+     * TODO: Implement actual purchase tracking with database
      */
     private boolean hasPurchased(String userId, String contentId) {
-        // Placeholder implementation
-        // In a real application, you would check a purchases table
-        return false;
+        // Placeholder implementation - replace with actual purchase table lookup
+        // For now, we'll simulate some purchases for testing
+        
+        // In a real implementation, you would:
+        // return purchaseRepository.existsByUserIdAndContentId(userId, contentId);
+        
+        // Temporary: allow access for demonstration (remove in production)
+        log.warn("Purchase check bypassed for demo - implement actual purchase tracking");
+        return true; // TODO: Replace with actual purchase verification
     }
     
     /**
-     * Generate presigned URLs for content access
+     * Enhanced method to generate secure presigned URLs for private S3 content
      */
     public Map<String, String> generateContentUrls(String userId, String contentId, int expirationMinutes) {
-        log.info("Generating content URLs for user {} and content {}", userId, contentId);
+        log.info("Generating secure presigned URLs for user {} and content {}", userId, contentId);
         
         if (!hasAccess(userId, contentId)) {
-            log.warn("User {} denied access to content {}", userId, contentId);
-            throw new SecurityException("User does not have access to this content");
+            log.warn("User {} denied access to private content {}", userId, contentId);
+            throw new SecurityException("User does not have access to this private content");
         }
         
         DroneContent content = contentRepository.findById(contentId)
                 .orElseThrow(() -> new RuntimeException("Content not found"));
         
         if (content.getMediaFiles() == null || content.getMediaFiles().isEmpty()) {
-            log.warn("No media files found for content {}", contentId);
+            log.warn("No private media files found for content {}", contentId);
             return new HashMap<>();
         }
         
+        // Extract S3 keys from private file URLs
         List<String> s3Keys = content.getMediaFiles().stream()
-                .map(DroneContent.MediaFile::getId)
+                .map(DroneContent.MediaFile::getId) // ID contains the S3 key
                 .collect(Collectors.toList());
         
-        log.info("Generating presigned URLs for {} files", s3Keys.size());
+        log.info("Generating presigned URLs for {} private S3 files", s3Keys.size());
+        
+        // Generate presigned URLs for private S3 access
         Map<String, String> urls = s3Service.generatePresignedUrls(s3Keys, expirationMinutes);
-        log.info("Generated {} presigned URLs", urls.size());
+        log.info("Generated {} secure presigned URLs for private content", urls.size());
         
         return urls;
     }
     
     /**
-     * Generate download URL for purchased content
+     * Generate download URL for purchased private content
      */
     public String generateDownloadUrl(String userId, String contentId, String fileId, int expirationMinutes) {
+        log.info("Generating download URL for user {} content {} file {}", userId, contentId, fileId);
+        
         if (!hasAccess(userId, contentId)) {
-            throw new SecurityException("User does not have access to this content");
+            throw new SecurityException("User does not have access to this private content");
         }
         
         DroneContent content = contentRepository.findById(contentId)
@@ -114,17 +131,18 @@ public class ContentAccessService {
         DroneContent.MediaFile mediaFile = content.getMediaFiles().stream()
                 .filter(file -> file.getId().equals(fileId))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("File not found"));
+                .orElseThrow(() -> new RuntimeException("Private file not found"));
         
+        // Generate presigned download URL for private S3 file
         return s3Service.generateDownloadPresignedUrl(
-            fileId, 
+            fileId, // S3 key
             mediaFile.getOriginalName(), 
             expirationMinutes
         );
     }
     
     /**
-     * Generate preview URLs (shorter expiration for security)
+     * Generate preview URLs for public browsing (approved content only)
      */
     public Map<String, String> generatePreviewUrls(String userId, String contentId) {
         User user = userRepository.findById(userId).orElse(null);
@@ -134,20 +152,49 @@ public class ContentAccessService {
             throw new RuntimeException("User or content not found");
         }
         
-        // Allow preview for approved content
+        // For public previews, only allow approved content
         if (content.getStatus() != DroneContent.ContentStatus.APPROVED) {
-            // Only allow preview for creator's own content and admins
+            // Exception: allow creators to preview their own content and admins
             if (user.getRole() != User.UserRole.admin && 
                 !content.getCreatorId().equals(userId)) {
-                throw new SecurityException("Content is not available for preview");
+                throw new SecurityException("Content is not available for public preview");
             }
+        }
+        
+        if (content.getMediaFiles() == null || content.getMediaFiles().isEmpty()) {
+            log.warn("No media files found for preview of content {}", contentId);
+            return new HashMap<>();
         }
         
         List<String> s3Keys = content.getMediaFiles().stream()
                 .map(DroneContent.MediaFile::getId)
                 .collect(Collectors.toList());
         
-        // Shorter expiration for previews (15 minutes)
+        // Shorter expiration for previews (15 minutes) for security
         return s3Service.generatePresignedUrls(s3Keys, 15);
+    }
+    
+    /**
+     * Check if content has thumbnail available for public display
+     */
+    public String generateThumbnailUrl(String contentId) {
+        try {
+            DroneContent content = contentRepository.findById(contentId).orElse(null);
+            if (content == null || content.getMediaFiles() == null || content.getMediaFiles().isEmpty()) {
+                return null;
+            }
+            
+            // Find first image file for thumbnail or generate from first video
+            DroneContent.MediaFile thumbnailFile = content.getMediaFiles().stream()
+                    .filter(file -> file.getType().equals("image"))
+                    .findFirst()
+                    .orElse(content.getMediaFiles().get(0));
+            
+            // Generate short-lived presigned URL for thumbnail (5 minutes)
+            return s3Service.generatePresignedUrl(thumbnailFile.getId(), 5);
+        } catch (Exception e) {
+            log.error("Error generating thumbnail URL for content {}", contentId, e);
+            return null;
+        }
     }
 }

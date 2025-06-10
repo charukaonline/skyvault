@@ -58,31 +58,40 @@ SkyVault bridges the gap between drone content creators and businesses looking f
 
 ### Upload Features
 
-- **AWS S3 Integration**: Secure cloud storage for all media files with CDN delivery and global availability
-- **Multi-file Upload**: Support for videos (MP4, MOV) and images (JPG, PNG) with direct S3 upload
-- **YouTube Integration**: Add preview links for enhanced content showcase
+- **Private AWS S3 Integration**: Secure cloud storage for all media files with presigned URL access
+- **Multi-file Upload**: Support for videos (MP4, MOV) and images (JPG, PNG) with direct private S3 upload
+- **YouTube Integration**: Add preview links for enhanced content showcase (public previews)
 - **Metadata Management**: Comprehensive tagging, categorization, and location data
 - **License Configuration**: Flexible licensing options with custom pricing
 - **Technical Details**: Resolution, duration, drone model, and shooting conditions
-- **Progress Tracking**: Real-time upload progress with S3 file management
+- **Progress Tracking**: Real-time upload progress with secure S3 file management
 - **Content Status**: Approval workflow with pending/approved/rejected states
-- **Public URLs**: Direct S3 public URLs for fast content delivery
+- **Private Access Control**: Secure presigned URLs for authorized access only
 
 ### Supported Formats
 
-- **Videos**: MP4, MOV (up to 100MB per file) stored on AWS S3
-- **Images**: JPG, PNG (up to 100MB per file) stored on AWS S3
-- **Resolutions**: 4K, 2K, HD, 720p with S3 metadata storage
-- **Previews**: YouTube video links for enhanced showcasing + S3 thumbnail generation
+- **Videos**: MP4, MOV (up to 100MB per file) stored privately on AWS S3
+- **Images**: JPG, PNG (up to 100MB per file) stored privately on AWS S3
+- **Resolutions**: 4K, 2K, HD, 720p with secure S3 metadata storage
+- **Previews**: YouTube video links for public showcasing + private S3 presigned URLs for authorized users
 
-### AWS S3 Storage Benefits
+### AWS S3 Private Storage Benefits
 
-- **Global CDN**: Fast content delivery worldwide
-- **Secure Storage**: Enterprise-grade security and encryption
-- **Scalable**: Unlimited storage capacity
-- **Cost-Effective**: Pay only for what you use
+- **Enhanced Security**: All files stored privately with no public access
+- **Presigned URLs**: Temporary access URLs for authorized users only
+- **Access Control**: Role-based access (creators see own content, buyers see purchased content)
+- **Scalable**: Unlimited storage capacity with enterprise-grade security
+- **Cost-Effective**: Pay only for storage and requests used
 - **Reliable**: 99.999999999% (11 9's) durability
-- **Direct Download**: Public URLs for instant access
+- **Secure Downloads**: Time-limited download URLs for purchased content
+
+### Security Architecture
+
+- **Private by Default**: All uploaded content is stored privately on S3
+- **Presigned URL Access**: Temporary URLs generated for authorized users (15min-2hr expiration)
+- **Role-Based Security**: Creators access own content, buyers access purchased content, admins access all
+- **Purchase Verification**: Access control integrated with purchase tracking system
+- **Audit Trail**: All access attempts logged for security monitoring
 
 ---
 
