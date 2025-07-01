@@ -7,11 +7,15 @@ import com.skyvault.server.dto.ContentResponse;
 import com.skyvault.server.dto.ContentSearchRequest;
 import com.skyvault.server.dto.ContentUploadRequest;
 import com.skyvault.server.model.DroneContent;
+import com.skyvault.server.repository.ContentRepository;
+import com.skyvault.server.repository.UserRepository;
 import com.skyvault.server.service.ContentService;
 import com.skyvault.server.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +25,7 @@ import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/content")
@@ -31,6 +36,8 @@ public class ContentController {
     
     private final ContentService contentService;
     private final JwtService jwtService;
+    private final ContentRepository contentRepository;
+    private final UserRepository userRepository;
     
     // Public endpoints for browsing content
     @GetMapping("/public/search")
@@ -347,6 +354,24 @@ public class ContentController {
             error.put("message", "Failed to update content status");
             return ResponseEntity.badRequest().body(error);
         }
+    }
+    
+    @GetMapping("/explore")
+    public Map<String, Object> exploreContent(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size
+    ) {
+        // Use ContentService to fetch all approved content with all fields
+        var searchRequest = new ContentSearchRequest();
+        var pageResult = contentService.searchContent(searchRequest, page, size);
+
+        List<ContentResponse> contentList = pageResult.getContent();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", contentList);
+        response.put("totalElements", pageResult.getTotalElements());
+        response.put("totalPages", pageResult.getTotalPages());
+        return response;
     }
     
     private boolean isValidFileType(MultipartFile file) {

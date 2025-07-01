@@ -10,11 +10,12 @@ import AuthenticatedUser from "./components/AuthenticatedUser";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import BuyerDashboard from "./pages/buyer/BuyerDashboard";
 import CreatorDashboard from "./pages/creator/CreatorDashboard";
-import AdminDashboard from "./pages/Admin/AdminDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageCreators from "./pages/admin/ManageCreators";
 import Content from "./pages/Content";
 import UploadContent from "./pages/creator/UploadContent";
 import ContentManagement from "./pages/creator/ContentManagement";
+import ExploreContent from "./pages/ExploreContent";
 
 function App() {
   return (
@@ -36,6 +37,16 @@ function App() {
             element={
               <Layout>
                 <Content />
+              </Layout>
+            }
+          />
+
+          {/* Add ExploreContent as a child route of Layout */}
+          <Route
+            path="/explore"
+            element={
+              <Layout>
+                <ExploreContent />
               </Layout>
             }
           />

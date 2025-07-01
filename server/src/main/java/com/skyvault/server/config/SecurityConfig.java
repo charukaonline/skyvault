@@ -52,6 +52,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/content/public/**").permitAll()
+                .requestMatchers("/api/content/explore").permitAll()
                 .requestMatchers("/api/test-db").permitAll()
                 .requestMatchers("/api/content/creator/**").hasRole("CREATOR")
                 .requestMatchers("/api/content/admin/**").hasRole("ADMIN")
