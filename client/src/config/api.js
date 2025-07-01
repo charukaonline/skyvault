@@ -45,6 +45,10 @@ export const apiConfig = {
       approveCreator: (id) =>
         `${API_BASE_URL}/api/admin/creators/${id}/approve`,
       rejectCreator: (id) => `${API_BASE_URL}/api/admin/creators/${id}/reject`,
+      // Content moderation endpoints
+      content: `${API_BASE_URL}/api/admin/content`,
+      updateContentStatus: (id) =>
+        `${API_BASE_URL}/api/admin/content/${id}/status`,
     },
   },
 };

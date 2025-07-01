@@ -16,6 +16,7 @@ import Content from "./pages/Content";
 import UploadContent from "./pages/creator/UploadContent";
 import ContentManagement from "./pages/creator/ContentManagement";
 import ExploreContent from "./pages/ExploreContent";
+import ModerateContent from "./pages/admin/ModerateContent";
 
 function App() {
   return (
@@ -125,6 +126,15 @@ function App() {
             element={
               <ProtectedRoutes allowedRoles={["admin"]}>
                 <ManageCreators />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route
+            path="/admin/content"
+            element={
+              <ProtectedRoutes allowedRoles={["admin"]}>
+                <ModerateContent />
               </ProtectedRoutes>
             }
           />
