@@ -3,19 +3,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Youtube, Search, MapPin, Camera } from "lucide-react";
+import { Youtube, Search, MapPin, Camera, X } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-const getYouTubeThumbnail = (youtubeUrl) => {
+const getYouTubeId = (youtubeUrl) => {
   if (!youtubeUrl) return null;
   const match = youtubeUrl.match(
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/
   );
-  if (match && match[1]) {
-    return `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
-  }
-  return null;
+  return match && match[1] ? match[1] : null;
+};
+
+const getYouTubeThumbnail = (youtubeUrl) => {
+  const id = getYouTubeId(youtubeUrl);
+  return id ? `https://img.youtube.com/vi/${id}/maxresdefault.jpg` : null;
 };
 
 const ExploreContent = () => {
@@ -24,6 +26,7 @@ const ExploreContent = () => {
   const [loading, setLoading] = useState(true);
   const [creatorFilter, setCreatorFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [previewId, setPreviewId] = useState(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/content/explore`)
@@ -55,6 +58,16 @@ const ExploreContent = () => {
     }
     setFiltered(result);
   }, [creatorFilter, search, contents]);
+
+  // Modal close on ESC
+  useEffect(() => {
+    if (!previewId) return;
+    const handler = (e) => {
+      if (e.key === "Escape") setPreviewId(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [previewId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12">
@@ -135,17 +148,18 @@ const ExploreContent = () => {
                     }}
                   />
                   {content.youtubePreview && (
-                    <a
-                      href={content.youtubePreview}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute bottom-3 right-3"
+                    <button
+                      type="button"
+                      className="absolute bottom-3 right-3 focus:outline-none"
+                      onClick={() =>
+                        setPreviewId(getYouTubeId(content.youtubePreview))
+                      }
                     >
-                      <Badge className="bg-red-600/20 text-red-400 border-red-500/30">
+                      <Badge className="bg-red-600/20 text-red-400 border-red-500/30 cursor-pointer">
                         <Youtube className="h-3 w-3 mr-1" />
                         Preview
                       </Badge>
-                    </a>
+                    </button>
                   )}
                 </div>
                 <CardContent className="p-4">
@@ -185,6 +199,36 @@ const ExploreContent = () => {
           </div>
         )}
       </div>
+      {/* Preview Modal */}
+      {previewId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setPreviewId(null)}
+        >
+          <div
+            className="relative bg-slate-900 rounded-lg shadow-lg max-w-2xl w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-white p-2"
+              onClick={() => setPreviewId(null)}
+              aria-label="Close preview"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="aspect-w-16 aspect-h-9 w-full rounded-t-lg overflow-hidden bg-black">
+              <iframe
+                src={`https://www.youtube.com/embed/${previewId}?autoplay=1`}
+                title="YouTube Preview"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                className="w-full h-80 md:h-96"
+                style={{ border: 0 }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
