@@ -50,6 +50,12 @@ export const apiConfig = {
       updateContentStatus: (id) =>
         `${API_BASE_URL}/api/admin/content/${id}/status`,
     },
+    cart: {
+      get: `${API_BASE_URL}/api/cart`,
+      add: `${API_BASE_URL}/api/cart/add`,
+      remove: `${API_BASE_URL}/api/cart/remove`,
+      clear: `${API_BASE_URL}/api/cart/clear`,
+    },
   },
 };
 

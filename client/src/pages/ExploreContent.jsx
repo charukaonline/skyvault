@@ -3,7 +3,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Youtube, Search, MapPin, Camera, X } from "lucide-react";
+import {
+  Youtube,
+  Search,
+  MapPin,
+  Camera,
+  X,
+  ShoppingCart,
+  Check,
+  Trash2,
+} from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { useNotification } from "@/contexts/NotificationContext";
+import Login from "./auth/Login";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -27,6 +39,10 @@ const ExploreContent = () => {
   const [creatorFilter, setCreatorFilter] = useState("");
   const [search, setSearch] = useState("");
   const [previewId, setPreviewId] = useState(null);
+  const { cart, addToCart, removeFromCart, clearCart } = useCart();
+  const { showSuccess } = useNotification();
+  const [cartOpen, setCartOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/content/explore`)
@@ -69,9 +85,39 @@ const ExploreContent = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [previewId]);
 
+  // Helper to check if content is in cart
+  const isInCart = (contentId) => cart.includes(contentId);
+
+  // Helper to check if user is a logged-in buyer
+  const getUser = () => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch {
+      return null;
+    }
+  };
+  const user = getUser();
+  const isBuyer = user && user.role === "buyer";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12">
       <div className="container mx-auto px-4">
+        {/* Cart Button */}
+        <div className="flex justify-end mb-4">
+          <Button
+            variant="outline"
+            className="relative"
+            onClick={() => setCartOpen(true)}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {cart.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full px-2 text-xs">
+                {cart.length}
+              </span>
+            )}
+            <span className="ml-2">Cart</span>
+          </Button>
+        </div>
         <h1 className="text-4xl font-bold text-white mb-6 text-center">
           Explore Drone Content
         </h1>
@@ -193,6 +239,39 @@ const ExploreContent = () => {
                       By {content.creatorName || "Unknown"}
                     </span>
                   </div>
+                  {/* Add to Cart Button */}
+                  <div className="mt-4 flex justify-end">
+                    {isInCart(content.id) ? (
+                      <Button
+                        size="sm"
+                        variant="success"
+                        disabled
+                        className="bg-green-600 text-white"
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Added
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          if (!isBuyer) {
+                            setShowLoginModal(true);
+                            return;
+                          }
+                          await addToCart(content.id);
+                          showSuccess(
+                            "Added to Cart",
+                            "Content added to cart!"
+                          );
+                        }}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-1" />
+                        Add to Cart
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -224,6 +303,118 @@ const ExploreContent = () => {
                 allowFullScreen
                 className="w-full h-80 md:h-96"
                 style={{ border: 0 }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Cart Modal */}
+      {cartOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setCartOpen(false)}
+        >
+          <div
+            className="relative bg-slate-900 rounded-lg shadow-lg max-w-lg w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <h3 className="text-white font-medium text-lg">
+                <ShoppingCart className="h-5 w-5 mr-2 inline" />
+                My Cart ({cart.length})
+              </h3>
+              <Button variant="ghost" onClick={() => setCartOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-4">
+              {cart.length === 0 ? (
+                <div className="text-gray-400 text-center py-8">
+                  Your cart is empty.
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {cart.map((contentId) => {
+                    const content = contents.find((c) => c.id === contentId);
+                    if (!content) return null;
+                    return (
+                      <li
+                        key={contentId}
+                        className="flex items-center justify-between bg-slate-800 rounded p-3"
+                      >
+                        <div>
+                          <div className="text-white font-medium">
+                            {content.title}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {content.creatorName}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-400 font-semibold text-sm">
+                            ${content.price}
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="destructive"
+                            onClick={async () => {
+                              await removeFromCart(contentId);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {cart.length > 0 && (
+                <div className="mt-6 flex justify-between">
+                  <Button variant="outline" onClick={clearCart}>
+                    Clear Cart
+                  </Button>
+                  <Button
+                    className="bg-blue-600 text-white"
+                    onClick={() => {
+                      setCartOpen(false);
+                      // TODO: Implement checkout flow
+                    }}
+                  >
+                    Proceed to Checkout
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setShowLoginModal(false)}
+        >
+          <div
+            className="relative bg-slate-900 rounded-lg shadow-lg max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-white p-2"
+              onClick={() => setShowLoginModal(false)}
+              aria-label="Close login"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-2 text-center">
+                Please sign in as a buyer to add items to your cart
+              </h3>
+              <Login
+                onLoginSuccess={() => {
+                  setShowLoginModal(false);
+                }}
+                hideLinks
               />
             </div>
           </div>
