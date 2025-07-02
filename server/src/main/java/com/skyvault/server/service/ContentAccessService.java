@@ -4,6 +4,8 @@ import com.skyvault.server.model.DroneContent;
 import com.skyvault.server.model.User;
 import com.skyvault.server.repository.ContentRepository;
 import com.skyvault.server.repository.UserRepository;
+import com.skyvault.server.repository.OrderRepository;
+import com.skyvault.server.model.Order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,8 +23,7 @@ public class ContentAccessService {
     private final ContentRepository contentRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
-    // Add purchase service dependency when implemented
-    // private final PurchaseService purchaseService;
+    private final OrderRepository orderRepository; // Add this line
     
     /**
      * Check if user has access to content
@@ -68,18 +69,22 @@ public class ContentAccessService {
     
     /**
      * Check if user has purchased content
-     * TODO: Implement actual purchase tracking with database
+     * Now checks real purchase DB for approved orders
      */
     private boolean hasPurchased(String userId, String contentId) {
-        // Placeholder implementation - replace with actual purchase table lookup
-        // For now, we'll simulate some purchases for testing
-        
-        // In a real implementation, you would:
-        // return purchaseRepository.existsByUserIdAndContentId(userId, contentId);
-        
-        // Temporary: allow access for demonstration (remove in production)
-        log.warn("Purchase check bypassed for demo - implement actual purchase tracking");
-        return true; // TODO: Replace with actual purchase verification
+        // Check for an approved order for this user and content
+        try {
+            List<Order> orders = orderRepository.findByBuyerIdAndStatus(userId, Order.Status.APPROVED);
+            for (Order order : orders) {
+                if (order.getContentIds() != null && order.getContentIds().contains(contentId)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            log.error("Error checking purchase for user {} and content {}", userId, contentId, e);
+            return false;
+        }
     }
     
     /**

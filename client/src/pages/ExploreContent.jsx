@@ -39,10 +39,16 @@ const ExploreContent = () => {
   const [creatorFilter, setCreatorFilter] = useState("");
   const [search, setSearch] = useState("");
   const [previewId, setPreviewId] = useState(null);
-  const { cart, addToCart, removeFromCart, clearCart, fetchCart } = useCart();
+  const { cart, creatorId, addToCart, removeFromCart, clearCart, fetchCart } =
+    useCart();
   const { showSuccess } = useNotification();
   const [cartOpen, setCartOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [slipFile, setSlipFile] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [checkoutSuccess, setCheckoutSuccess] = useState("");
 
   useEffect(() => {
     fetch(`${API_BASE}/api/content/explore`)
@@ -98,6 +104,9 @@ const ExploreContent = () => {
   };
   const user = getUser();
   const isBuyer = user && user.role === "buyer";
+
+  // Helper to get creator info for cart
+  const cartCreator = contents.find((c) => c.creatorId === creatorId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12">
@@ -260,7 +269,7 @@ const ExploreContent = () => {
                             setShowLoginModal(true);
                             return;
                           }
-                          await addToCart(content.id);
+                          await addToCart(content.id, content.creatorId);
                           showSuccess(
                             "Added to Cart",
                             "Content added to cart!"
@@ -370,7 +379,7 @@ const ExploreContent = () => {
                 </ul>
               )}
               {cart.length > 0 && (
-                <div className="mt-6 flex justify-between">
+                <div className="mt-6 flex flex-col gap-2">
                   <Button variant="outline" onClick={clearCart}>
                     Clear Cart
                   </Button>
@@ -378,13 +387,122 @@ const ExploreContent = () => {
                     className="bg-blue-600 text-white"
                     onClick={() => {
                       setCartOpen(false);
-                      // TODO: Implement checkout flow
+                      setShowCheckout(true);
                     }}
                   >
                     Proceed to Checkout
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setShowCheckout(false)}
+        >
+          <div
+            className="relative bg-slate-900 rounded-lg shadow-lg max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-white p-2"
+              onClick={() => setShowCheckout(false)}
+              aria-label="Close checkout"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-2 text-center">
+                Checkout - Bank Transfer
+              </h3>
+              <div className="mb-4 text-gray-300 text-sm">
+                <div className="mb-2 font-semibold">Bank Details:</div>
+                <div>
+                  Bank: <span className="font-mono">SkyVault Bank</span>
+                </div>
+                <div>
+                  Account Name:{" "}
+                  <span className="font-mono">SkyVault Platform</span>
+                </div>
+                <div>
+                  Account Number: <span className="font-mono">1234567890</span>
+                </div>
+                <div>
+                  Branch: <span className="font-mono">Colombo Main</span>
+                </div>
+                <div>
+                  Reference:{" "}
+                  <span className="font-mono">Your Email or User ID</span>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-200 mb-1">
+                  Upload Bank Transfer Slip
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => setSlipFile(e.target.files[0])}
+                  className="block w-full text-gray-300"
+                />
+              </div>
+              {checkoutError && (
+                <div className="text-red-500 mb-2">{checkoutError}</div>
+              )}
+              {checkoutSuccess && (
+                <div className="text-green-500 mb-2">{checkoutSuccess}</div>
+              )}
+              <Button
+                className="w-full bg-green-600 text-white"
+                disabled={checkoutLoading}
+                onClick={async () => {
+                  setCheckoutError("");
+                  setCheckoutSuccess("");
+                  if (!slipFile) {
+                    setCheckoutError("Please upload the bank slip.");
+                    return;
+                  }
+                  setCheckoutLoading(true);
+                  // Prepare form data
+                  const formData = new FormData();
+                  cart.forEach((id) => formData.append("contentIds", id));
+                  formData.append("slip", slipFile);
+                  try {
+                    const res = await fetch(`${API_BASE}/api/cart/checkout`, {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${localStorage.getItem(
+                          "token"
+                        )}`,
+                      },
+                      body: formData,
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setCheckoutSuccess(
+                        "Checkout successful! Your purchase is pending verification."
+                      );
+                      clearCart();
+                      setSlipFile(null);
+                      setTimeout(() => {
+                        setShowCheckout(false);
+                        setCheckoutSuccess("");
+                      }, 2000);
+                    } else {
+                      setCheckoutError(data.message || "Checkout failed.");
+                    }
+                  } catch (err) {
+                    setCheckoutError("Checkout failed.");
+                  }
+                  setCheckoutLoading(false);
+                }}
+              >
+                {checkoutLoading ? "Processing..." : "Submit Payment"}
+              </Button>
             </div>
           </div>
         </div>

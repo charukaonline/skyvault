@@ -328,8 +328,10 @@ public class ContentService {
         if (creator != null) {
             response.setCreatorName(creator.getName());
             response.setCreatorEmail(creator.getEmail());
+            response.setCreatorId(creator.getId()); // Add this line
+        } else {
+            response.setCreatorId(content.getCreatorId()); // fallback
         }
-        
         return response;
     }
 }

@@ -18,6 +18,7 @@ public class DroneContent {
     private String id;
     
     private String creatorId;
+    public String getCreatorId() { return creatorId; }
     private String title;
     private String description;
     private String category;

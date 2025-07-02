@@ -7,6 +7,7 @@ export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
+  const [creatorId, setCreatorId] = useState(null);
   const token = localStorage.getItem("token");
 
   const fetchCart = async () => {
@@ -16,7 +17,8 @@ export const CartProvider = ({ children }) => {
     });
     if (res.ok) {
       const data = await res.json();
-      setCart(Array.isArray(data) ? data : []);
+      setCart(Array.isArray(data.cart) ? data.cart : []);
+      setCreatorId(data.creatorId || null);
     }
   };
 
@@ -25,17 +27,23 @@ export const CartProvider = ({ children }) => {
     // eslint-disable-next-line
   }, [token]);
 
-  const addToCart = async (contentId) => {
+  const addToCart = async (contentId, contentCreatorId) => {
     if (!token) return;
+    // Restrict to single creator
+    if (creatorId && creatorId !== contentCreatorId) {
+      alert("You can only add items from one creator at a time.");
+      return;
+    }
     await fetch(apiConfig.endpoints.cart.add, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ contentId }),
+      body: JSON.stringify({ contentId, creatorId: contentCreatorId }),
     });
     setCart((prev) => [...new Set([...prev, contentId])]);
+    setCreatorId(contentCreatorId);
   };
 
   const removeFromCart = async (contentId) => {
@@ -49,6 +57,8 @@ export const CartProvider = ({ children }) => {
       body: JSON.stringify({ contentId }),
     });
     setCart((prev) => prev.filter((id) => id !== contentId));
+    // If cart is empty after removal, clear creatorId
+    if (cart.length === 1) setCreatorId(null);
   };
 
   const clearCart = async () => {
@@ -58,11 +68,19 @@ export const CartProvider = ({ children }) => {
       headers: { Authorization: `Bearer ${token}` },
     });
     setCart([]);
+    setCreatorId(null);
   };
 
   return (
     <CartContext.Provider
-      value={{ cart, addToCart, removeFromCart, clearCart, fetchCart }}
+      value={{
+        cart,
+        creatorId,
+        addToCart,
+        removeFromCart,
+        clearCart,
+        fetchCart,
+      }}
     >
       {children}
     </CartContext.Provider>
