@@ -35,4 +35,5 @@ public class ContentResponse {
     // Creator information
     private String creatorName;
     private String creatorEmail;
+    private String creatorId; // Add this line
 }
