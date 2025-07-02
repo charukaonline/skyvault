@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { CartProvider } from "./contexts/CartContext";
 import Layout from "./components/layout/Layout";
 import LandingPage from "./pages/LandingPage";
 import Signup from "./pages/auth/Signup";
@@ -21,128 +22,130 @@ import ModerateContent from "./pages/admin/ModerateContent";
 function App() {
   return (
     <NotificationProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/"
-            element={
-              <Layout>
-                <LandingPage />
-              </Layout>
-            }
-          />
-
-          <Route
-            path="/content"
-            element={
-              <Layout>
-                <Content />
-              </Layout>
-            }
-          />
-
-          {/* Add ExploreContent as a child route of Layout */}
-          <Route
-            path="/explore"
-            element={
-              <Layout>
-                <ExploreContent />
-              </Layout>
-            }
-          />
-
-          {/* Authentication Routes - Redirect if already logged in */}
-          <Route
-            path="/auth/signup"
-            element={
-              <AuthenticatedUser>
+      <CartProvider>
+        <Router>
+          <Routes>
+            {/* Public Routes */}
+            <Route
+              path="/"
+              element={
                 <Layout>
-                  <Signup />
+                  <LandingPage />
                 </Layout>
-              </AuthenticatedUser>
-            }
-          />
-          <Route
-            path="/auth/login"
-            element={
-              <AuthenticatedUser>
+              }
+            />
+
+            <Route
+              path="/content"
+              element={
                 <Layout>
-                  <Login />
+                  <Content />
                 </Layout>
-              </AuthenticatedUser>
-            }
-          />
+              }
+            />
 
-          {/* Protected Routes */}
-          <Route
-            path="/buyer/:userId/:email"
-            element={
-              <ProtectedRoutes allowedRoles={["buyer"]}>
-                <BuyerDashboard />
-              </ProtectedRoutes>
-            }
-          />
+            {/* Add ExploreContent as a child route of Layout */}
+            <Route
+              path="/explore"
+              element={
+                <Layout>
+                  <ExploreContent />
+                </Layout>
+              }
+            />
 
-          <Route
-            path="/creator/:userId/:email"
-            element={
-              <ProtectedRoutes allowedRoles={["creator"]}>
-                <CreatorDashboard />
-              </ProtectedRoutes>
-            }
-          />
+            {/* Authentication Routes - Redirect if already logged in */}
+            <Route
+              path="/auth/signup"
+              element={
+                <AuthenticatedUser>
+                  <Layout>
+                    <Signup />
+                  </Layout>
+                </AuthenticatedUser>
+              }
+            />
+            <Route
+              path="/auth/login"
+              element={
+                <AuthenticatedUser>
+                  <Layout>
+                    <Login />
+                  </Layout>
+                </AuthenticatedUser>
+              }
+            />
 
-          {/* Creator Routes */}
-          <Route
-            path="/creator/upload"
-            element={
-              <ProtectedRoutes allowedRoles={["creator"]}>
-                <UploadContent />
-              </ProtectedRoutes>
-            }
-          />
-          <Route
-            path="/creator/content"
-            element={
-              <ProtectedRoutes allowedRoles={["creator"]}>
-                <ContentManagement />
-              </ProtectedRoutes>
-            }
-          />
+            {/* Protected Routes */}
+            <Route
+              path="/buyer/:userId/:email"
+              element={
+                <ProtectedRoutes allowedRoles={["buyer"]}>
+                  <BuyerDashboard />
+                </ProtectedRoutes>
+              }
+            />
 
-          {/* Admin Routes */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoutes allowedRoles={["admin"]}>
-                <AdminDashboard />
-              </ProtectedRoutes>
-            }
-          />
+            <Route
+              path="/creator/:userId/:email"
+              element={
+                <ProtectedRoutes allowedRoles={["creator"]}>
+                  <CreatorDashboard />
+                </ProtectedRoutes>
+              }
+            />
 
-          <Route
-            path="/admin/creators"
-            element={
-              <ProtectedRoutes allowedRoles={["admin"]}>
-                <ManageCreators />
-              </ProtectedRoutes>
-            }
-          />
+            {/* Creator Routes */}
+            <Route
+              path="/creator/upload"
+              element={
+                <ProtectedRoutes allowedRoles={["creator"]}>
+                  <UploadContent />
+                </ProtectedRoutes>
+              }
+            />
+            <Route
+              path="/creator/content"
+              element={
+                <ProtectedRoutes allowedRoles={["creator"]}>
+                  <ContentManagement />
+                </ProtectedRoutes>
+              }
+            />
 
-          <Route
-            path="/admin/content"
-            element={
-              <ProtectedRoutes allowedRoles={["admin"]}>
-                <ModerateContent />
-              </ProtectedRoutes>
-            }
-          />
+            {/* Admin Routes */}
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoutes allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoutes>
+              }
+            />
 
-          {/* Catch all route */}
-          <Route path="*" element={<NotFound404 />} />
-        </Routes>
-      </Router>
+            <Route
+              path="/admin/creators"
+              element={
+                <ProtectedRoutes allowedRoles={["admin"]}>
+                  <ManageCreators />
+                </ProtectedRoutes>
+              }
+            />
+
+            <Route
+              path="/admin/content"
+              element={
+                <ProtectedRoutes allowedRoles={["admin"]}>
+                  <ModerateContent />
+                </ProtectedRoutes>
+              }
+            />
+
+            {/* Catch all route */}
+            <Route path="*" element={<NotFound404 />} />
+          </Routes>
+        </Router>
+      </CartProvider>
     </NotificationProvider>
   );
 }

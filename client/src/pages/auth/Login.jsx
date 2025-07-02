@@ -13,7 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { apiConfig } from "@/config/api";
 
-const Login = () => {
+const Login = ({ onLoginSuccess, hideLinks }) => {
   const { showError } = useNotification();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -126,9 +126,13 @@ const Login = () => {
             break;
           case "buyer":
           default:
-            navigate(`/buyer/${data.user.id}/${data.user.email}`, {
-              replace: true,
-            });
+            if (onLoginSuccess) {
+              onLoginSuccess();
+            } else {
+              navigate(`/buyer/${data.user.id}/${data.user.email}`, {
+                replace: true,
+              });
+            }
             break;
         }
       } else {
@@ -283,17 +287,19 @@ const Login = () => {
               </Button>
             </div>
 
-            <div className="text-center">
-              <span className="text-sm text-gray-400">
-                Don't have an account?{" "}
-                <a
-                  href="/auth/signup"
-                  className="font-medium text-blue-400 hover:text-blue-300 transition-colors duration-200"
-                >
-                  Sign up
-                </a>
-              </span>
-            </div>
+            {!hideLinks && (
+              <div className="text-center">
+                <span className="text-sm text-gray-400">
+                  Don't have an account?{" "}
+                  <a
+                    href="/auth/signup"
+                    className="font-medium text-blue-400 hover:text-blue-300 transition-colors duration-200"
+                  >
+                    Sign up
+                  </a>
+                </span>
+              </div>
+            )}
           </form>
         </div>
       </div>
