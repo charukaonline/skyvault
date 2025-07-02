@@ -39,7 +39,7 @@ const ExploreContent = () => {
   const [creatorFilter, setCreatorFilter] = useState("");
   const [search, setSearch] = useState("");
   const [previewId, setPreviewId] = useState(null);
-  const { cart, addToCart, removeFromCart, clearCart } = useCart();
+  const { cart, addToCart, removeFromCart, clearCart, fetchCart } = useCart();
   const { showSuccess } = useNotification();
   const [cartOpen, setCartOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -413,6 +413,7 @@ const ExploreContent = () => {
               <Login
                 onLoginSuccess={() => {
                   setShowLoginModal(false);
+                  window.location.reload(); // Refresh page to take session in effect
                 }}
                 hideLinks
               />
