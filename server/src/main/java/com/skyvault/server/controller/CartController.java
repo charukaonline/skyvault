@@ -14,6 +14,7 @@ import com.skyvault.server.repository.UserRepository;
 import com.skyvault.server.service.S3Service;
 import com.skyvault.server.model.Order;
 import com.skyvault.server.repository.OrderRepository;
+import com.skyvault.server.service.JwtService;
 
 import java.util.*;
 
@@ -35,6 +36,8 @@ public class CartController {
     private S3Service s3Service;
     @Autowired
     private OrderRepository orderRepository;
+    @Autowired
+    private JwtService jwtService;
 
     @GetMapping
     public ResponseEntity<?> getCart(@RequestHeader("Authorization") String token) {
@@ -92,7 +95,9 @@ public class CartController {
             @RequestParam("contentIds") List<String> contentIds,
             @RequestPart("slip") MultipartFile slip
     ) {
-        String userId = extractUserId(token);
+        // Use JwtService to extract userId
+        String jwt = token != null ? token.replace("Bearer ", "") : null;
+        String userId = (jwt != null && !jwt.isEmpty()) ? jwtService.extractUserId(jwt) : null;
         if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid token"));
         if (contentIds == null || contentIds.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "No items in cart"));
         if (slip == null || slip.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "Bank slip required"));
@@ -129,6 +134,7 @@ public class CartController {
             order.setStatus(Order.Status.PENDING);
             order.setCreatorId(creatorId);
             order.setCreatedAt(java.time.LocalDateTime.now());
+            order.setUpdatedAt(java.time.LocalDateTime.now());
             orderRepository.save(order);
 
             log.info("User {} purchased {} items from creator {}. Slip S3 key: {}", userId, contentIds.size(), creatorId, mediaFile.getId());

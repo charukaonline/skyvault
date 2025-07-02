@@ -20,6 +20,7 @@ public class Order {
     private String creatorId;
     private List<String> contentTitles;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public enum Status {
         PENDING, APPROVED, REJECTED;

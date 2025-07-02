@@ -30,6 +30,7 @@ const BuyerDashboard = () => {
   const [selectedContent, setSelectedContent] = useState(null);
   const [downloadUrls, setDownloadUrls] = useState({});
   const [downloading, setDownloading] = useState(false);
+  const [contentMap, setContentMap] = useState({}); // contentId -> content metadata
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -52,8 +53,8 @@ const BuyerDashboard = () => {
   }, [userId, email, navigate]);
 
   useEffect(() => {
-    // Fetch buyer's approved orders
-    const fetchOrders = async () => {
+    // Fetch buyer's approved orders and their content metadata
+    const fetchOrdersAndContents = async () => {
       setLoadingOrders(true);
       try {
         const token = localStorage.getItem("token");
@@ -62,13 +63,39 @@ const BuyerDashboard = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch orders");
         const data = await res.json();
-        setOrders(data.orders || []);
+        const orders = data.orders || [];
+        setOrders(orders);
+
+        // Collect all unique contentIds from all orders
+        const allContentIds = [
+          ...new Set(orders.flatMap((order) => order.contentIds || [])),
+        ];
+        // Fetch content metadata for each contentId in parallel
+        const contentResults = await Promise.all(
+          allContentIds.map(async (cid) => {
+            try {
+              const cres = await fetch(`${API_BASE}/api/content/public/${cid}`);
+              if (!cres.ok) return null;
+              const cdata = await cres.json();
+              return [cid, cdata];
+            } catch {
+              return null;
+            }
+          })
+        );
+        // Build contentId -> content metadata map
+        const cMap = {};
+        for (const pair of contentResults) {
+          if (pair && pair[0] && pair[1]) cMap[pair[0]] = pair[1];
+        }
+        setContentMap(cMap);
       } catch (e) {
         setOrders([]);
+        setContentMap({});
       }
       setLoadingOrders(false);
     };
-    fetchOrders();
+    fetchOrdersAndContents();
   }, [userId, email, navigate]);
 
   // Fetch download URLs for a content
@@ -148,28 +175,72 @@ const BuyerDashboard = () => {
                       Approved
                     </Badge>
                   </div>
-                  <div className="mb-2 text-gray-400 text-sm">
-                    {order.contentTitles?.join(", ")}
-                  </div>
                   <div className="mb-2 text-xs text-gray-500">
                     Purchased on: {new Date(order.createdAt).toLocaleString()}
                   </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {order.contentIds.map((cid) => (
-                      <Button
-                        key={cid}
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          setSelectedContent(cid);
-                          setDownloadUrls({});
-                          await fetchDownloadUrls(cid);
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download Content
-                      </Button>
-                    ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    {(order.contentIds || []).map((cid) => {
+                      const content = contentMap[cid];
+                      if (!content) {
+                        return (
+                          <div
+                            key={cid}
+                            className="bg-slate-900 rounded p-3 flex flex-col gap-2"
+                          >
+                            <div className="text-gray-400 text-sm">
+                              Content unavailable (may have been removed)
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div
+                          key={cid}
+                          className="bg-slate-900 rounded p-3 flex flex-col gap-2"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={
+                                content.thumbnailFile?.url ||
+                                "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=200"
+                              }
+                              alt={content.title}
+                              className="w-16 h-16 object-cover rounded"
+                              crossOrigin="anonymous"
+                              onError={(e) => {
+                                e.target.src =
+                                  "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=200";
+                              }}
+                            />
+                            <div>
+                              <div className="text-white font-medium">
+                                {content.title}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {content.category} • {content.location}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                By {content.creatorName || "Unknown"}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                setSelectedContent(cid);
+                                setDownloadUrls({});
+                                await fetchDownloadUrls(cid);
+                              }}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Download Files
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

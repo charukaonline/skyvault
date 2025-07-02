@@ -25,6 +25,7 @@ public class OrderService {
             throw new RuntimeException("Unauthorized");
         }
         order.setStatus(Order.Status.APPROVED);
+        order.setUpdatedAt(java.time.LocalDateTime.now()); // <-- Add this line
         orderRepository.save(order);
     }
 
@@ -35,6 +36,7 @@ public class OrderService {
             throw new RuntimeException("Unauthorized");
         }
         order.setStatus(Order.Status.REJECTED);
+        order.setUpdatedAt(java.time.LocalDateTime.now()); // <-- Add this line
         orderRepository.save(order);
     }
 
