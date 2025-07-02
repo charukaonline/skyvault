@@ -4,6 +4,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -16,8 +17,20 @@ public class Order {
     private List<String> contentIds;
     private String slipUrl;
     private Status status;
+    private String creatorId;
+    private List<String> contentTitles;
+    private LocalDateTime createdAt;
 
     public enum Status {
-        PENDING, APPROVED, REJECTED
+        PENDING, APPROVED, REJECTED;
+
+        @Override
+        public String toString() {
+            return name().toLowerCase();
+        }
+
+        public static Status fromString(String value) {
+            return Status.valueOf(value.toUpperCase());
+        }
     }
 }

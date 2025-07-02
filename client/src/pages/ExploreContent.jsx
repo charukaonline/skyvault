@@ -487,6 +487,11 @@ const ExploreContent = () => {
                         "Checkout successful! Your purchase is pending verification."
                       );
                       clearCart();
+                      setSlipFile(null);
+                      setTimeout(() => {
+                        setShowCheckout(false);
+                        setCheckoutSuccess("");
+                      }, 2000);
                     } else {
                       setCheckoutError(data.message || "Checkout failed.");
                     }

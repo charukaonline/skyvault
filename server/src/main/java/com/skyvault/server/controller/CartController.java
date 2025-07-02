@@ -12,6 +12,8 @@ import com.skyvault.server.model.DroneContent;
 import com.skyvault.server.model.User;
 import com.skyvault.server.repository.UserRepository;
 import com.skyvault.server.service.S3Service;
+import com.skyvault.server.model.Order;
+import com.skyvault.server.repository.OrderRepository;
 
 import java.util.*;
 
@@ -31,6 +33,8 @@ public class CartController {
     private UserRepository userRepository;
     @Autowired
     private S3Service s3Service;
+    @Autowired
+    private OrderRepository orderRepository;
 
     @GetMapping
     public ResponseEntity<?> getCart(@RequestHeader("Authorization") String token) {
@@ -95,6 +99,7 @@ public class CartController {
 
         // Check all content are from the same creator
         String creatorId = null;
+        List<String> contentTitles = new ArrayList<>();
         for (String cid : contentIds) {
             DroneContent c = contentRepository.findById(cid).orElse(null);
             if (c == null) return ResponseEntity.badRequest().body(Map.of("message", "Invalid content in cart"));
@@ -102,15 +107,32 @@ public class CartController {
             if (!creatorId.equals(c.getCreatorId())) {
                 return ResponseEntity.badRequest().body(Map.of("message", "All items must be from the same creator"));
             }
+            contentTitles.add(c.getTitle());
         }
 
         // Upload slip to S3 (private)
         try {
             String folder = "skyvault/purchase-slips/" + userId;
             var mediaFile = s3Service.uploadSingleFile(slip, folder);
-            // Store purchase record (for demo, just log)
+
+            // Get buyer email
+            User buyer = userRepository.findById(userId).orElse(null);
+            String buyerEmail = buyer != null ? buyer.getEmail() : "";
+
+            // Store purchase record in DB
+            Order order = new Order();
+            order.setBuyerId(userId);
+            order.setBuyerEmail(buyerEmail);
+            order.setContentIds(contentIds);
+            order.setContentTitles(contentTitles);
+            order.setSlipUrl(mediaFile.getUrl());
+            order.setStatus(Order.Status.PENDING);
+            order.setCreatorId(creatorId);
+            order.setCreatedAt(java.time.LocalDateTime.now());
+            orderRepository.save(order);
+
             log.info("User {} purchased {} items from creator {}. Slip S3 key: {}", userId, contentIds.size(), creatorId, mediaFile.getId());
-            // TODO: Save purchase record to DB and notify creator (e.g., via email)
+
             // Clear cart after purchase
             cartStore.remove(userId);
             cartCreatorStore.remove(userId);

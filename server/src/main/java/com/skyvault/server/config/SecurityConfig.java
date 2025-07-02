@@ -56,6 +56,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/test-db").permitAll()
                 .requestMatchers("/api/content/creator/**").hasRole("CREATOR")
                 .requestMatchers("/api/orders/creator/**").hasRole("CREATOR")
+                .requestMatchers("/api/orders/*/approve").hasRole("CREATOR")
+                .requestMatchers("/api/orders/*/reject").hasRole("CREATOR")
                 .requestMatchers("/api/content/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/content/access/**").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
