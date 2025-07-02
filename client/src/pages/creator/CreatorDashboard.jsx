@@ -216,6 +216,28 @@ const CreatorDashboard = () => {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* New Orders Quick Action */}
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-yellow-400" />
+                  View Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400 mb-4">
+                  Review and manage your sales orders
+                </p>
+                <Button
+                  onClick={() => navigate("/creator/orders")}
+                  variant="outline"
+                  className="border-slate-600 text-gray-300 hover:bg-slate-700"
+                >
+                  View Orders
+                </Button>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Recent Content */}
