@@ -164,4 +164,21 @@ public class UserService {
         // ...add more fields as needed...
         return resp;
     }
+
+    /**
+     * Change password for a user (buyer)
+     */
+    public void changePassword(String userId, String oldPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (user.getRole() != User.UserRole.buyer) {
+            throw new RuntimeException("Only buyers can change password here");
+        }
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("Old password is incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
 }

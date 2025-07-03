@@ -31,6 +31,15 @@ const BuyerDashboard = () => {
   const [downloadUrls, setDownloadUrls] = useState({});
   const [downloading, setDownloading] = useState(false);
   const [contentMap, setContentMap] = useState({}); // contentId -> content metadata
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [pwForm, setPwForm] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirm: "",
+  });
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -150,6 +159,13 @@ const BuyerDashboard = () => {
             >
               <LogOut className="h-4 w-4 mr-2" />
               Logout
+            </Button>
+            <Button
+              variant="outline"
+              className="ml-2"
+              onClick={() => setShowChangePw(true)}
+            >
+              Change Password
             </Button>
           </div>
         </div>
@@ -294,6 +310,154 @@ const BuyerDashboard = () => {
                     ))}
                   </ul>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Change Password Modal */}
+        {showChangePw && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+            onClick={() => setShowChangePw(false)}
+          >
+            <div
+              className="relative bg-slate-900 rounded-lg shadow-lg max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="absolute top-2 right-2 text-gray-400 hover:text-white p-2"
+                onClick={() => setShowChangePw(false)}
+                aria-label="Close"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 text-center">
+                  Change Password
+                </h3>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setPwError("");
+                    setPwSuccess("");
+                    if (
+                      !pwForm.oldPassword ||
+                      !pwForm.newPassword ||
+                      !pwForm.confirm
+                    ) {
+                      setPwError("All fields are required.");
+                      return;
+                    }
+                    if (pwForm.newPassword.length < 6) {
+                      setPwError("New password must be at least 6 characters.");
+                      return;
+                    }
+                    if (pwForm.newPassword !== pwForm.confirm) {
+                      setPwError("Passwords do not match.");
+                      return;
+                    }
+                    setPwLoading(true);
+                    try {
+                      const res = await fetch(
+                        `${API_BASE}/api/user/change-password`,
+                        {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem(
+                              "token"
+                            )}`,
+                          },
+                          body: JSON.stringify({
+                            oldPassword: pwForm.oldPassword,
+                            newPassword: pwForm.newPassword,
+                          }),
+                        }
+                      );
+                      const data = await res.json();
+                      if (res.ok) {
+                        setPwSuccess("Password changed successfully.");
+                        setPwForm({
+                          oldPassword: "",
+                          newPassword: "",
+                          confirm: "",
+                        });
+                        setTimeout(() => {
+                          setShowChangePw(false);
+                          setPwSuccess("");
+                        }, 1500);
+                      } else {
+                        setPwError(
+                          data.message || "Failed to change password."
+                        );
+                      }
+                    } catch {
+                      setPwError("Failed to change password.");
+                    }
+                    setPwLoading(false);
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-gray-300 mb-1">
+                      Old Password
+                    </label>
+                    <input
+                      type="password"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                      value={pwForm.oldPassword}
+                      onChange={(e) =>
+                        setPwForm((f) => ({
+                          ...f,
+                          oldPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                      value={pwForm.newPassword}
+                      onChange={(e) =>
+                        setPwForm((f) => ({
+                          ...f,
+                          newPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 mb-1">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                      value={pwForm.confirm}
+                      onChange={(e) =>
+                        setPwForm((f) => ({ ...f, confirm: e.target.value }))
+                      }
+                      required
+                    />
+                  </div>
+                  {pwError && <div className="text-red-500">{pwError}</div>}
+                  {pwSuccess && (
+                    <div className="text-green-500">{pwSuccess}</div>
+                  )}
+                  <Button
+                    type="submit"
+                    className="w-full bg-blue-600 text-white mt-2"
+                    disabled={pwLoading}
+                  >
+                    {pwLoading ? "Changing..." : "Change Password"}
+                  </Button>
+                </form>
               </div>
             </div>
           </div>
