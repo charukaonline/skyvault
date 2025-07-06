@@ -1,7 +1,9 @@
 package com.skyvault.server.service;
 
 import com.skyvault.server.model.Order;
+import com.skyvault.server.model.User;
 import com.skyvault.server.repository.OrderRepository;
+import com.skyvault.server.repository.UserRepository;
 import com.skyvault.server.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,8 @@ import java.util.List;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final S3Service s3Service;
+    private final UserRepository userRepository;
+    private final EmailService emailService; // Inject EmailService
 
     public List<Order> getOrdersForCreator(String creatorId) {
         return orderRepository.findByCreatorIdOrderByCreatedAtDesc(creatorId);
@@ -25,8 +29,15 @@ public class OrderService {
             throw new RuntimeException("Unauthorized");
         }
         order.setStatus(Order.Status.APPROVED);
-        order.setUpdatedAt(java.time.LocalDateTime.now()); // <-- Add this line
+        order.setUpdatedAt(java.time.LocalDateTime.now());
         orderRepository.save(order);
+
+        // Notify buyer and creator
+        User buyer = userRepository.findById(order.getBuyerId()).orElse(null);
+        User creator = userRepository.findById(order.getCreatorId()).orElse(null);
+        if (buyer != null && creator != null) {
+            emailService.sendOrderApprovedEmail(buyer, creator, order);
+        }
     }
 
     public void rejectOrder(String orderId, String creatorId) {
@@ -36,8 +47,15 @@ public class OrderService {
             throw new RuntimeException("Unauthorized");
         }
         order.setStatus(Order.Status.REJECTED);
-        order.setUpdatedAt(java.time.LocalDateTime.now()); // <-- Add this line
+        order.setUpdatedAt(java.time.LocalDateTime.now());
         orderRepository.save(order);
+
+        // Notify buyer and creator
+        User buyer = userRepository.findById(order.getBuyerId()).orElse(null);
+        User creator = userRepository.findById(order.getCreatorId()).orElse(null);
+        if (buyer != null && creator != null) {
+            emailService.sendOrderRejectedEmail(buyer, creator, order);
+        }
     }
 
     public String getSlipDownloadUrl(Order order, int expirationMinutes) {
@@ -61,5 +79,14 @@ public class OrderService {
 
     public List<Order> getApprovedOrdersForBuyer(String buyerId) {
         return orderRepository.findByBuyerIdAndStatus(buyerId, Order.Status.APPROVED);
+    }
+
+    // Called from CartController after orderRepository.save(order)
+    public void notifyOrderPlaced(Order order) {
+        User buyer = userRepository.findById(order.getBuyerId()).orElse(null);
+        User creator = userRepository.findById(order.getCreatorId()).orElse(null);
+        if (buyer != null && creator != null) {
+            emailService.sendOrderPlacedEmail(buyer, creator, order);
+        }
     }
 }
