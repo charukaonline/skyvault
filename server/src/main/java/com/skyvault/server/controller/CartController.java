@@ -15,6 +15,7 @@ import com.skyvault.server.service.S3Service;
 import com.skyvault.server.model.Order;
 import com.skyvault.server.repository.OrderRepository;
 import com.skyvault.server.service.JwtService;
+import com.skyvault.server.service.OrderService;
 
 import java.util.*;
 
@@ -38,6 +39,8 @@ public class CartController {
     private OrderRepository orderRepository;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    private OrderService orderService;
 
     @GetMapping
     public ResponseEntity<?> getCart(@RequestHeader("Authorization") String token) {
@@ -136,6 +139,9 @@ public class CartController {
             order.setCreatedAt(java.time.LocalDateTime.now());
             order.setUpdatedAt(java.time.LocalDateTime.now());
             orderRepository.save(order);
+
+            // Notify buyer and creator via email
+            orderService.notifyOrderPlaced(order);
 
             log.info("User {} purchased {} items from creator {}. Slip S3 key: {}", userId, contentIds.size(), creatorId, mediaFile.getId());
 
