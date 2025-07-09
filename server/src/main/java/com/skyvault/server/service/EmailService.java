@@ -11,13 +11,20 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
 public class EmailService {
 
     private final JavaMailSenderImpl mailSender;
+
+    // Prevent duplicate emails within a short window (e.g., 5 seconds)
+    private final ConcurrentHashMap<String, Instant> recentEmailActions = new ConcurrentHashMap<>();
+    private static final long EMAIL_DEBOUNCE_SECONDS = 5;
 
     public EmailService(
         @Value("${zohomail.username}") String username,
@@ -36,7 +43,22 @@ public class EmailService {
         props.put("mail.debug", "false");
     }
 
+    private boolean shouldSendEmail(String actionKey) {
+        Instant now = Instant.now();
+        Instant lastSent = recentEmailActions.get(actionKey);
+        if (lastSent != null && now.isBefore(lastSent.plusSeconds(EMAIL_DEBOUNCE_SECONDS))) {
+            log.warn("Duplicate email prevented for action: {}", actionKey);
+            return false;
+        }
+        recentEmailActions.put(actionKey, now);
+        // Clean up old entries
+        recentEmailActions.entrySet().removeIf(e -> now.isAfter(e.getValue().plusSeconds(EMAIL_DEBOUNCE_SECONDS * 2)));
+        return true;
+    }
+
     public void sendOrderPlacedEmail(User buyer, User creator, Order order) {
+        String actionKey = "order-placed-" + order.getId();
+        if (!shouldSendEmail(actionKey)) return;
         // Email to creator
         String subjectCreator = "New Order Received on SkyVault";
         String textCreator = String.format(
@@ -55,6 +77,8 @@ public class EmailService {
     }
 
     public void sendOrderApprovedEmail(User buyer, User creator, Order order) {
+        String actionKey = "order-approved-" + order.getId();
+        if (!shouldSendEmail(actionKey)) return;
         // Email to buyer
         String subjectBuyer = "Order Approved - Download Your Content";
         String textBuyer = String.format(
@@ -73,6 +97,8 @@ public class EmailService {
     }
 
     public void sendOrderRejectedEmail(User buyer, User creator, Order order) {
+        String actionKey = "order-rejected-" + order.getId();
+        if (!shouldSendEmail(actionKey)) return;
         // Email to buyer
         String subjectBuyer = "Order Rejected";
         String textBuyer = String.format(

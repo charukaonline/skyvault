@@ -73,7 +73,6 @@ public class S3Service {
             throw new IOException("Cannot upload empty file");
         }
         
-        String fileType = getFileType(file.getContentType());
         String originalFileName = file.getOriginalFilename();
         String fileExtension = getFileExtension(originalFileName);
         String uniqueFileName = UUID.randomUUID().toString() + "." + fileExtension;
@@ -88,8 +87,7 @@ public class S3Service {
             
             // Add custom metadata
             metadata.addUserMetadata("original-name", originalFileName);
-            metadata.addUserMetadata("file-type", fileType);
-            metadata.addUserMetadata("upload-purpose", "download-only"); // Mark as download-only
+            metadata.addUserMetadata("file-type", "download-only"); // Mark as download-only
             
             // Upload file to S3 as STRICTLY PRIVATE (no streaming access)
             PutObjectRequest putObjectRequest = new PutObjectRequest(
@@ -111,20 +109,15 @@ public class S3Service {
             DroneContent.MediaFile mediaFile = new DroneContent.MediaFile();
             mediaFile.setId(s3Key); // Use S3 key as ID for download access
             mediaFile.setUrl(privateUrl); // Store private S3 reference
-            mediaFile.setType(fileType);
+            mediaFile.setType("download-only");
             mediaFile.setFormat(fileExtension);
             mediaFile.setSize(file.getSize());
             mediaFile.setOriginalName(originalFileName);
             
             // Basic metadata without dimensions (download-only focus)
-            if (fileType.equals("image")) {
-                mediaFile.setWidth(null); // Not needed for download-only
-                mediaFile.setHeight(null);
-            } else if (fileType.equals("video")) {
-                mediaFile.setDuration(null); // Not needed for download-only
-                mediaFile.setWidth(null);
-                mediaFile.setHeight(null);
-            }
+            mediaFile.setWidth(null); // Not needed for download-only
+            mediaFile.setHeight(null);
+            mediaFile.setDuration(null); // Not needed for download-only
             
             log.info("Successfully uploaded private file to S3 (download-only): {} -> {}", originalFileName, s3Key);
             return mediaFile;
@@ -218,16 +211,87 @@ public class S3Service {
         }
     }
     
-    private String getFileType(String contentType) {
-        if (contentType == null) return "image";
-        
-        if (contentType.startsWith("video/")) {
-            return "video";
-        } else if (contentType.startsWith("image/")) {
-            return "image";
+    // --- SLIP UPLOAD/VIEWING METHODS (separate from video/image logic) ---
+
+    /**
+     * Upload a bank slip file to S3 (private, separate from video/image logic)
+     * Returns the S3 key and a private S3 reference URL.
+     */
+    public SlipUploadResult uploadSlipFile(MultipartFile file, String folderName) throws IOException {
+        if (file.isEmpty()) {
+            throw new IOException("Cannot upload empty slip file");
         }
-        
-        return "image"; // default
+        String originalFileName = file.getOriginalFilename();
+        String fileExtension = getFileExtension(originalFileName);
+        String uniqueFileName = "slip-" + UUID.randomUUID().toString() + "." + fileExtension;
+        String s3Key = folderName + "/" + uniqueFileName;
+
+        try {
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.getSize());
+            metadata.setContentType(file.getContentType());
+            metadata.setCacheControl("private, no-cache, must-revalidate");
+            metadata.addUserMetadata("original-name", originalFileName);
+            metadata.addUserMetadata("file-type", "bank-slip");
+
+            PutObjectRequest putObjectRequest = new PutObjectRequest(
+                bucketName,
+                s3Key,
+                file.getInputStream(),
+                metadata
+            );
+            putObjectRequest.setCannedAcl(CannedAccessControlList.Private);
+
+            s3Client.putObject(putObjectRequest);
+
+            String privateUrl = String.format("s3://%s/%s", bucketName, s3Key);
+
+            log.info("Uploaded bank slip to S3: {} -> {}", originalFileName, s3Key);
+
+            return new SlipUploadResult(s3Key, privateUrl, originalFileName, fileExtension, file.getSize());
+        } catch (Exception e) {
+            log.error("Failed to upload slip to S3: {}", originalFileName, e);
+            throw new IOException("S3 slip upload failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Generate a presigned URL for a slip file (for viewing/downloading).
+     */
+    public String generateSlipPresignedUrl(String s3Key, int expirationMinutes) {
+        try {
+            java.util.Date expiration = new java.util.Date();
+            long expTimeMillis = expiration.getTime();
+            expTimeMillis += 1000 * 60 * expirationMinutes;
+            expiration.setTime(expTimeMillis);
+
+            GeneratePresignedUrlRequest req =
+                new GeneratePresignedUrlRequest(bucketName, s3Key)
+                    .withMethod(HttpMethod.GET)
+                    .withExpiration(expiration);
+
+            return s3Client.generatePresignedUrl(req).toString();
+        } catch (Exception e) {
+            log.error("Failed to generate slip presigned URL for: {}", s3Key, e);
+            throw new RuntimeException("Failed to generate slip presigned URL: " + e.getMessage());
+        }
+    }
+
+    // Helper class for slip upload result
+    public static class SlipUploadResult {
+        public final String s3Key;
+        public final String s3Url;
+        public final String originalName;
+        public final String extension;
+        public final long size;
+
+        public SlipUploadResult(String s3Key, String s3Url, String originalName, String extension, long size) {
+            this.s3Key = s3Key;
+            this.s3Url = s3Url;
+            this.originalName = originalName;
+            this.extension = extension;
+            this.size = size;
+        }
     }
     
     private String getFileExtension(String fileName) {

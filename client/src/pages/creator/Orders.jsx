@@ -19,8 +19,10 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlip, setSelectedSlip] = useState(null);
+  const [selectedSlipType, setSelectedSlipType] = useState(""); // Track file type
   const [slipLoading, setSlipLoading] = useState(false);
   const [slipError, setSlipError] = useState("");
+  const [showSlipModal, setShowSlipModal] = useState(false); // new state
   const { showSuccess, showError } = useNotification();
 
   useEffect(() => {
@@ -43,6 +45,11 @@ const Orders = () => {
   };
 
   const handleAction = async (orderId, action) => {
+    // Show confirmation dialog before proceeding
+    const actionText = action === "approve" ? "approve" : "reject";
+    const confirmMsg = `Are you sure you want to ${actionText} this order?`;
+    if (!window.confirm(confirmMsg)) return;
+
     try {
       const token = localStorage.getItem("token");
       // Use the correct creator endpoint for approve/reject
@@ -62,7 +69,19 @@ const Orders = () => {
         return;
       }
       showSuccess(`Order ${action === "approve" ? "approved" : "rejected"}`);
-      fetchOrders();
+      // Optimistically update the order status in the UI
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === orderId
+            ? {
+                ...order,
+                status: action === "approve" ? "approved" : "rejected",
+              }
+            : order
+        )
+      );
+      // Optionally, you can still fetchOrders() in the background for sync
+      // await fetchOrders();
     } catch {
       showError("Failed to update order");
     }
@@ -71,6 +90,9 @@ const Orders = () => {
   const handleViewSlip = async (order) => {
     setSlipLoading(true);
     setSlipError("");
+    setSelectedSlip(null);
+    setSelectedSlipType("");
+    setShowSlipModal(true); // open modal immediately, show spinner
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
@@ -87,10 +109,27 @@ const Orders = () => {
       }
       const data = await res.json();
       setSelectedSlip(data.url);
+      // Infer file type from URL
+      if (data.url.endsWith(".pdf")) setSelectedSlipType("pdf");
+      else if (data.url.match(/\.(jpg|jpeg|png)$/i))
+        setSelectedSlipType("image");
+      else setSelectedSlipType("");
     } catch (e) {
       setSlipError("Failed to get slip URL");
     }
     setSlipLoading(false);
+  };
+
+  const handleDownloadSlip = () => {
+    if (!selectedSlip) return;
+    const link = document.createElement("a");
+    link.href = selectedSlip;
+    link.download = "bank-slip";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -148,27 +187,8 @@ const Orders = () => {
                                 disabled={slipLoading}
                               >
                                 <Eye className="h-4 w-4 mr-1" />
-                                {slipLoading ? "Loading..." : "View"}
+                                View
                               </Button>
-                              {order.slipUrl && (
-                                <a
-                                  href="#"
-                                  className="ml-2"
-                                  onClick={async (e) => {
-                                    e.preventDefault();
-                                    // Download slip using secure URL
-                                    await handleViewSlip(order);
-                                    if (selectedSlip) {
-                                      window.open(selectedSlip, "_blank");
-                                    }
-                                  }}
-                                >
-                                  <Button size="sm" variant="outline">
-                                    <Download className="h-4 w-4 mr-1" />
-                                    Download
-                                  </Button>
-                                </a>
-                              )}
                             </td>
                             <td className="p-2">
                               <Badge className={statusColors[status]}>
@@ -214,10 +234,15 @@ const Orders = () => {
         </div>
       </main>
       {/* Slip Modal */}
-      {selectedSlip && (
+      {showSlipModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-          onClick={() => setSelectedSlip(null)}
+          onClick={() => {
+            setShowSlipModal(false);
+            setSelectedSlip(null);
+            setSlipError("");
+            setSlipLoading(false);
+          }}
         >
           <div
             className="relative bg-slate-900 rounded-lg shadow-lg max-w-2xl w-full mx-4"
@@ -225,7 +250,12 @@ const Orders = () => {
           >
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-white p-2"
-              onClick={() => setSelectedSlip(null)}
+              onClick={() => {
+                setShowSlipModal(false);
+                setSelectedSlip(null);
+                setSlipError("");
+                setSlipLoading(false);
+              }}
               aria-label="Close slip"
             >
               <X className="w-6 h-6" />
@@ -234,21 +264,43 @@ const Orders = () => {
               <h3 className="text-lg font-semibold text-white mb-4">
                 Bank Slip
               </h3>
-              {selectedSlip.endsWith(".pdf") ? (
-                <iframe
-                  src={selectedSlip}
-                  title="Bank Slip"
-                  className="w-full h-96"
-                />
+              {slipLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-400 mb-4" />
+                  <div className="text-gray-400">Loading slip...</div>
+                </div>
+              ) : slipError ? (
+                <div className="text-red-400">{slipError}</div>
+              ) : selectedSlip ? (
+                <>
+                  {selectedSlipType === "pdf" ? (
+                    <iframe
+                      src={selectedSlip}
+                      title="Bank Slip"
+                      className="w-full h-96"
+                    />
+                  ) : selectedSlipType === "image" ? (
+                    <img
+                      src={selectedSlip}
+                      alt="Bank Slip"
+                      className="w-full max-h-96 object-contain rounded"
+                    />
+                  ) : (
+                    <div className="text-gray-400">Unsupported file type.</div>
+                  )}
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDownloadSlip}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </>
               ) : (
-                <img
-                  src={selectedSlip}
-                  alt="Bank Slip"
-                  className="w-full max-h-96 object-contain rounded"
-                />
-              )}
-              {slipError && (
-                <div className="text-red-400 mt-2">{slipError}</div>
+                <div className="text-gray-400">No slip found.</div>
               )}
             </div>
           </div>

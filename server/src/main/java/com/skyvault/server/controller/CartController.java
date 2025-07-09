@@ -105,6 +105,16 @@ public class CartController {
         if (contentIds == null || contentIds.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "No items in cart"));
         if (slip == null || slip.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "Bank slip required"));
 
+        // Enforce slip file type: PDF, JPG, PNG only
+        String slipContentType = slip.getContentType();
+        if (slipContentType == null ||
+            !(slipContentType.equalsIgnoreCase("application/pdf")
+                || slipContentType.equalsIgnoreCase("image/jpeg")
+                || slipContentType.equalsIgnoreCase("image/jpg")
+                || slipContentType.equalsIgnoreCase("image/png"))) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Slip must be a PDF, JPG, or PNG file"));
+        }
+
         // Check all content are from the same creator
         String creatorId = null;
         List<String> contentTitles = new ArrayList<>();
@@ -121,7 +131,8 @@ public class CartController {
         // Upload slip to S3 (private)
         try {
             String folder = "skyvault/purchase-slips/" + userId;
-            var mediaFile = s3Service.uploadSingleFile(slip, folder);
+            // Use dedicated slip upload method
+            var slipResult = s3Service.uploadSlipFile(slip, folder);
 
             // Get buyer email
             User buyer = userRepository.findById(userId).orElse(null);
@@ -133,7 +144,7 @@ public class CartController {
             order.setBuyerEmail(buyerEmail);
             order.setContentIds(contentIds);
             order.setContentTitles(contentTitles);
-            order.setSlipUrl(mediaFile.getUrl());
+            order.setSlipUrl(slipResult.s3Url); // Store S3 reference (not public URL)
             order.setStatus(Order.Status.PENDING);
             order.setCreatorId(creatorId);
             order.setCreatedAt(java.time.LocalDateTime.now());
@@ -143,14 +154,14 @@ public class CartController {
             // Notify buyer and creator via email
             orderService.notifyOrderPlaced(order);
 
-            log.info("User {} purchased {} items from creator {}. Slip S3 key: {}", userId, contentIds.size(), creatorId, mediaFile.getId());
+            log.info("User {} purchased {} items from creator {}. Slip S3 key: {}", userId, contentIds.size(), creatorId, slipResult.s3Key);
 
             // Clear cart after purchase
             cartStore.remove(userId);
             cartCreatorStore.remove(userId);
             return ResponseEntity.ok(Map.of(
                 "message", "Purchase submitted. Awaiting verification.",
-                "slipUrl", mediaFile.getUrl(),
+                "slipUrl", slipResult.s3Url,
                 "creatorId", creatorId
             ));
         } catch (Exception e) {
