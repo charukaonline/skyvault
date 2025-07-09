@@ -22,7 +22,7 @@ public class OrderService {
         return orderRepository.findByCreatorIdOrderByCreatedAtDesc(creatorId);
     }
 
-    public void approveOrder(String orderId, String creatorId) {
+    public Order approveOrder(String orderId, String creatorId) {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found"));
         if (!order.getCreatorId().equals(creatorId)) {
@@ -30,7 +30,7 @@ public class OrderService {
         }
         order.setStatus(Order.Status.APPROVED);
         order.setUpdatedAt(java.time.LocalDateTime.now());
-        orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
 
         // Notify buyer and creator
         User buyer = userRepository.findById(order.getBuyerId()).orElse(null);
@@ -38,9 +38,10 @@ public class OrderService {
         if (buyer != null && creator != null) {
             emailService.sendOrderApprovedEmail(buyer, creator, order);
         }
+        return savedOrder;
     }
 
-    public void rejectOrder(String orderId, String creatorId) {
+    public Order rejectOrder(String orderId, String creatorId) {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found"));
         if (!order.getCreatorId().equals(creatorId)) {
@@ -48,7 +49,7 @@ public class OrderService {
         }
         order.setStatus(Order.Status.REJECTED);
         order.setUpdatedAt(java.time.LocalDateTime.now());
-        orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
 
         // Notify buyer and creator
         User buyer = userRepository.findById(order.getBuyerId()).orElse(null);
@@ -56,10 +57,11 @@ public class OrderService {
         if (buyer != null && creator != null) {
             emailService.sendOrderRejectedEmail(buyer, creator, order);
         }
+        return savedOrder;
     }
 
     public String getSlipDownloadUrl(Order order, int expirationMinutes) {
-        // Assume slipUrl is an S3 URL or S3 key
+        // Use only for slip files, not for video/image content
         String slipUrl = order.getSlipUrl();
         if (slipUrl == null || slipUrl.isEmpty()) return null;
         // If slipUrl is a full S3 URL, extract the key
@@ -69,8 +71,15 @@ public class OrderService {
             if (idx > 0) {
                 s3Key = slipUrl.substring(idx + ".amazonaws.com/".length());
             }
+        } else if (slipUrl.startsWith("s3://")) {
+            // s3://bucket/key
+            int idx = slipUrl.indexOf('/', 5);
+            if (idx > 0) {
+                s3Key = slipUrl.substring(idx + 1);
+            }
         }
-        return s3Service.generatePresignedUrl(s3Key, expirationMinutes);
+        // Use dedicated slip presigned URL generator
+        return s3Service.generateSlipPresignedUrl(s3Key, expirationMinutes);
     }
 
     public Order getOrderById(String orderId) {

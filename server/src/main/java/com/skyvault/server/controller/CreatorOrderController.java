@@ -49,14 +49,20 @@ public class CreatorOrderController {
     @PostMapping("/{orderId}/approve")
     public ResponseEntity<?> approveOrder(@PathVariable String orderId, Authentication authentication) {
         String creatorId = authentication.getName();
-        orderService.approveOrder(orderId, creatorId);
-        return ResponseEntity.ok().body(java.util.Map.of("message", "Order approved"));
+        Order updatedOrder = orderService.approveOrder(orderId, creatorId);
+        return ResponseEntity.ok().body(java.util.Map.of(
+            "message", "Order approved",
+            "order", updatedOrder
+        ));
     }
 
     @PostMapping("/{orderId}/reject")
     public ResponseEntity<?> rejectOrder(@PathVariable String orderId, Authentication authentication) {
         String creatorId = authentication.getName();
-        orderService.rejectOrder(orderId, creatorId);
-        return ResponseEntity.ok().body(java.util.Map.of("message", "Order rejected"));
+        Order updatedOrder = orderService.rejectOrder(orderId, creatorId);
+        return ResponseEntity.ok().body(java.util.Map.of(
+            "message", "Order rejected",
+            "order", updatedOrder
+        ));
     }
 }
